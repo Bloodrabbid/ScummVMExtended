@@ -156,6 +156,10 @@ public:
 		_text.setColor(isMouseInside(mousePos) ? _textColorHovered : _textColorDefault);
 	}
 	void onScreenChanged() override;
+	bool isGridNavigable() const override { return true; }
+	Common::Point getCenter() const override {
+		return Common::Point(_pos.x + _width / 2, _pos.y + _height / 2);
+	}
 
 private:
 	const Gfx::Color _textColorHovered = Gfx::Color(0x1E, 0x1E, 0x96);

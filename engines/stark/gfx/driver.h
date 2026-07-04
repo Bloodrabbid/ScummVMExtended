@@ -112,6 +112,9 @@ public:
 	/** Convert a coordinate from current to original resolution */
 	Common::Point convertCoordinateCurrentToOriginal(const Common::Point &point) const;
 
+	/** Convert a coordinate from original to current resolution */
+	Common::Point convertCoordinateOriginalToCurrent(const Common::Point &point) const;
+
 	/** Scale a width value from original resolution to current resolution */
 	uint scaleWidthOriginalToCurrent(uint width) const;
 

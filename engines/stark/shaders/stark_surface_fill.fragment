@@ -2,8 +2,9 @@
 OUTPUT
 
 uniform float fadeLevel;
+uniform float opacity;
 uniform vec4 color;
 
 void main() {
-	outColor = color + vec4(fadeLevel, fadeLevel, fadeLevel, 0) * color.a;
+	outColor = (color + vec4(fadeLevel, fadeLevel, fadeLevel, 0) * color.a) * opacity;
 }

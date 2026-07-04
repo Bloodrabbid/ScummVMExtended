@@ -30,6 +30,7 @@ MODULE_OBJS := \
 	model/animhandler.o \
 	model/model.o \
 	model/skeleton_anim.o \
+	movement/directwalk.o \
 	movement/followpath.o \
 	movement/followpathlight.o \
 	movement/movement.o \

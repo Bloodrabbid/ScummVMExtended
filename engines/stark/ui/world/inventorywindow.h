@@ -55,6 +55,9 @@ public:
 	void scrollDown();
 	void scrollUp();
 
+	/** Snap the cursor to the neighbor inventory slot in the specified direction */
+	void navigateGrid(GridDirection direction);
+
 protected:
 	void onMouseMove(const Common::Point &pos) override;
 	void onClick(const Common::Point &pos) override;

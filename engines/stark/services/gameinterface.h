@@ -53,6 +53,15 @@ public:
 	/** Make April try to go to the location under the cursor */
 	void walkTo(const Common::Point &mouse);
 
+	/**
+	 * Make April walk in a camera relative direction, for direct gamepad control.
+	 *
+	 * The vector components are in the -1..1 range, x positive towards the right
+	 * of the screen, y positive towards the bottom. A null vector stops the
+	 * current direct movement, if any.
+	 */
+	void directWalk(float x, float y);
+
 	VisualImageXMG *getActionImage(uint32 itemIndex, bool active);
 	VisualImageXMG *getCursorImage(uint32 itemIndex);
 

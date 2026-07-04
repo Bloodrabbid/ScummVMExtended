@@ -21,6 +21,7 @@
 
 #include "engines/stark/services/gameinterface.h"
 
+#include "engines/stark/movement/directwalk.h"
 #include "engines/stark/movement/walk.h"
 
 #include "engines/stark/resources/knowledgeset.h"
@@ -103,6 +104,45 @@ void GameInterface::walkTo(const Common::Point &mouse) {
 	walk->start();
 
 	april->setMovement(walk);
+}
+
+void GameInterface::directWalk(float x, float y) {
+	if (!StarkUserInterface->isInteractive() || !StarkUserInterface->isInGameScreen()) {
+		return;
+	}
+
+	Current *current = StarkGlobal->getCurrent();
+	if (!current) {
+		return;
+	}
+
+	Resources::Floor *floor = current->getFloor();
+	Resources::ModelItem *april = current->getInteractive();
+	if (!floor || !april || !april->isEnabled()) {
+		return;
+	}
+
+	Movement *movement = april->getMovement();
+	DirectWalk *directWalk = nullptr;
+	if (movement && movement->getType() == Movement::kTypeDirectWalk) {
+		directWalk = static_cast<DirectWalk *>(movement);
+	}
+
+	if (!directWalk) {
+		if (x == 0.f && y == 0.f) {
+			// Don't interrupt other movements when the stick is released
+			return;
+		}
+
+		directWalk = new DirectWalk(april);
+		directWalk->setInputVector(x, y);
+		directWalk->start();
+
+		april->setMovement(directWalk);
+	} else {
+		// The movement stops itself on the next game loop when the vector is null
+		directWalk->setInputVector(x, y);
+	}
 }
 
 VisualImageXMG *GameInterface::getActionImage(uint32 itemIndex, bool active) {

@@ -25,6 +25,7 @@
 #include "engines/stark/gfx/bitmap.h"
 #include "engines/stark/services/services.h"
 #include "engines/stark/services/fontprovider.h"
+#include "engines/stark/services/userinterface.h"
 #include "engines/stark/ui/cursor.h"
 #include "engines/stark/visual/text.h"
 
@@ -202,6 +203,13 @@ void DialogBox::onClick(const Common::Point &pos) {
 void DialogBox::onKeyPress(const Common::CustomEventType customType) {
 	if (customType == kActionSkip) {
 		close();
+	} else if (customType == kActionGridLeft || customType == kActionGridRight) {
+		// Snap the cursor to the confirm or cancel button
+		const Common::Rect &buttonRect = customType == kActionGridLeft ? _confirmButtonRect : _cancelButtonRect;
+		Common::Point center(_position.left + (buttonRect.left + buttonRect.right) / 2,
+		                     _position.top + (buttonRect.top + buttonRect.bottom) / 2);
+
+		StarkUserInterface->warpMouseTo(center);
 	}
 }
 

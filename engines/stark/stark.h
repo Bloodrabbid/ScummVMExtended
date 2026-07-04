@@ -84,7 +84,26 @@ enum STARKAction {
 	kActionPrevDialogue,
 	kActionNextDialogue,
 	kActionSelectDialogue,
-	kActionSkip
+	kActionSkip,
+	kActionGridUp,
+	kActionGridDown,
+	kActionGridLeft,
+	kActionGridRight
+};
+
+/**
+ * Pseudo axis identifiers for the character movement keymap actions.
+ *
+ * The keymapper forwards the analog deflection of a bound half axis to the
+ * engine as EVENT_JOYAXIS_MOTION events carrying these identifiers. Values
+ * are offset above the Common::JoystickAxis range to avoid collisions with
+ * raw axis events reaching the engine.
+ */
+enum StarkPseudoAxis {
+	kStarkAxisWalkUp = 100,
+	kStarkAxisWalkDown,
+	kStarkAxisWalkLeft,
+	kStarkAxisWalkRight
 };
 
 
@@ -118,6 +137,8 @@ private:
 	void mainLoop();
 	void updateDisplayScene();
 	void processEvents();
+	void handleJoystickAxis(byte axis, int16 position);
+	void updateGamepadInput();
 	void onScreenChanged() const;
 	void addModsToSearchPath() const;
 	static void checkRecommendedDatafiles();
@@ -130,6 +151,12 @@ private:
 	// Double click handling
 	static const uint _doubleClickDelay = 500; // ms
 	uint _lastClickTime;
+
+	// Gamepad state, normalized to -1..1
+	float _walkAxisX, _walkAxisY;
+	float _cursorAxisX, _cursorAxisY;
+	float _cursorSubPixelX, _cursorSubPixelY;
+	uint32 _lastGamepadUpdateMillis;
 };
 
 } // End of namespace Stark

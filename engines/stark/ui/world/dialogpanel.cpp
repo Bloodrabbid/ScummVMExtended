@@ -307,6 +307,18 @@ void DialogPanel::focusPrevOption() {
 	}
 }
 
+Common::Point DialogPanel::getFocusedOptionCenter() const {
+	if (_options.empty()) {
+		return Common::Point();
+	}
+
+	ClickText *option = _options[_focusedOption];
+	Common::Point pos = option->getPosition();
+
+	return Common::Point(_position.left + pos.x + option->getWidth() / 2,
+	                     _position.top + pos.y + option->getHeight() / 2);
+}
+
 void DialogPanel::selectFocusedOption() {
 	if (_options.size() > 0) {
 		StarkDialogPlayer->selectOption(_focusedOption);

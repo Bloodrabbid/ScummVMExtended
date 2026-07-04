@@ -78,6 +78,13 @@ public:
 	 */
 	void setFadeLevel(float fadeLevel);
 
+	/**
+	 * The image is blended with the specified opacity
+	 *
+	 * It is a value between 0 (fully transparent) and 1 (fully opaque)
+	 */
+	void setOpacity(float opacity);
+
 	/** Perform a transparency hit test on an image point */
 	bool isPointSolid(const Common::Point &point) const;
 

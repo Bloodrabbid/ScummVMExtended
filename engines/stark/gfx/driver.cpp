@@ -133,6 +133,18 @@ Common::Point Driver::convertCoordinateCurrentToOriginal(const Common::Point &po
 	return scaledPosition;
 }
 
+Common::Point Driver::convertCoordinateOriginalToCurrent(const Common::Point &point) const {
+	Common::Point scaledPosition = point;
+	scaledPosition.x = CLIP<int16>(scaledPosition.x, 0, kOriginalWidth);
+	scaledPosition.y = CLIP<int16>(scaledPosition.y, 0, kOriginalHeight);
+	scaledPosition.x *= _screenViewport.width() / (float)kOriginalWidth;
+	scaledPosition.y *= _screenViewport.height() / (float)kOriginalHeight;
+	scaledPosition.x += _screenViewport.left;
+	scaledPosition.y += _screenViewport.top;
+
+	return scaledPosition;
+}
+
 uint Driver::scaleWidthOriginalToCurrent(uint width) const {
 	return _screenViewport.width() * width / kOriginalWidth;
 }

@@ -303,6 +303,14 @@ bool SaveDataWidget::isMouseInside(const Common::Point &mousePos) const {
 		   mousePos.y >= _thumbPos.y && mousePos.y <= _thumbPos.y + _thumbHeight;
 }
 
+bool SaveDataWidget::isGridNavigable() const {
+	return true;
+}
+
+Common::Point SaveDataWidget::getCenter() const {
+	return Common::Point(_thumbPos.x + _thumbWidth / 2, _thumbPos.y + _thumbHeight / 2);
+}
+
 void SaveDataWidget::onClick() {
 	StaticLocationWidget::onClick();
 	_screen->onWidgetSelected(this);

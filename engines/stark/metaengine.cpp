@@ -286,7 +286,57 @@ Common::KeymapArray StarkMetaEngine::initKeymaps(const char *target) const {
 	act = new Action("PAUSE", _("Pause game"));
 	act->setCustomEngineActionEvent(kActionPause);
 	act->addDefaultInputMapping("p");
-	act->addDefaultInputMapping("JOY_LEFT_STICK");
+	gameKeyMap->addAction(act);
+
+	// Direct character movement on the left stick. The outgoing events carry
+	// pseudo axis identifiers so the engine can tell the deflection direction
+	// apart while receiving the analog magnitude from the keymapper.
+	Event walkEvent;
+	walkEvent.type = EVENT_JOYAXIS_MOTION;
+
+	act = new Action("WALKUP", _("Walk forward"));
+	walkEvent.joystick.axis = kStarkAxisWalkUp;
+	act->setEvent(walkEvent);
+	act->addDefaultInputMapping("JOY_LEFT_STICK_Y-");
+	gameKeyMap->addAction(act);
+
+	act = new Action("WALKDOWN", _("Walk backward"));
+	walkEvent.joystick.axis = kStarkAxisWalkDown;
+	act->setEvent(walkEvent);
+	act->addDefaultInputMapping("JOY_LEFT_STICK_Y+");
+	gameKeyMap->addAction(act);
+
+	act = new Action("WALKLEFT", _("Walk left"));
+	walkEvent.joystick.axis = kStarkAxisWalkLeft;
+	act->setEvent(walkEvent);
+	act->addDefaultInputMapping("JOY_LEFT_STICK_X-");
+	gameKeyMap->addAction(act);
+
+	act = new Action("WALKRIGHT", _("Walk right"));
+	walkEvent.joystick.axis = kStarkAxisWalkRight;
+	act->setEvent(walkEvent);
+	act->addDefaultInputMapping("JOY_LEFT_STICK_X+");
+	gameKeyMap->addAction(act);
+
+	// I18N: Grid navigation snaps the cursor between UI elements (menu buttons, inventory slots)
+	act = new Action("GRIDUP", _("Move selection up"));
+	act->setCustomEngineActionEvent(kActionGridUp);
+	act->addDefaultInputMapping("JOY_UP");
+	gameKeyMap->addAction(act);
+
+	act = new Action("GRIDDOWN", _("Move selection down"));
+	act->setCustomEngineActionEvent(kActionGridDown);
+	act->addDefaultInputMapping("JOY_DOWN");
+	gameKeyMap->addAction(act);
+
+	act = new Action("GRIDLEFT", _("Move selection left"));
+	act->setCustomEngineActionEvent(kActionGridLeft);
+	act->addDefaultInputMapping("JOY_LEFT");
+	gameKeyMap->addAction(act);
+
+	act = new Action("GRIDRIGHT", _("Move selection right"));
+	act->setCustomEngineActionEvent(kActionGridRight);
+	act->addDefaultInputMapping("JOY_RIGHT");
 	gameKeyMap->addAction(act);
 
 	act = new Action("SCROLLUPINV", _("Scroll inventory up"));
@@ -329,7 +379,6 @@ Common::KeymapArray StarkMetaEngine::initKeymaps(const char *target) const {
 	act->setCustomEngineActionEvent(kActionSelectDialogue);
 	act->addDefaultInputMapping("RETURN");
 	act->addDefaultInputMapping("KP_ENTER");
-	act->addDefaultInputMapping("JOY_RIGHT");
 	gameKeyMap->addAction(act);
 
 	act = new Action("SKIP", _("Skip video sequence or dialog"));

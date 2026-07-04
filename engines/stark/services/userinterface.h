@@ -196,6 +196,20 @@ public:
 	void handleActions(Common::CustomEventType customType);
 	void handleKeyPress(const Common::KeyState &keyState);
 
+	/**
+	 * Notify that the pointer (mouse, touch, or the cursor stick) was used.
+	 *
+	 * Makes the cursor visible again if it was hidden due to direct
+	 * character control.
+	 */
+	void notifyPointerInput();
+
+	/** Notify that the character is being moved with the gamepad stick */
+	void notifyGamepadWalk();
+
+	/** Teleport the cursor to a position given in original (640x480) coordinates */
+	void warpMouseTo(const Common::Point &posOriginal);
+
 private:
 	Screen *getScreenByName(Screen::Name screenName) const;
 
@@ -225,6 +239,17 @@ private:
 
 	bool _interactive;
 	bool _interactionAttemptDenied;
+
+	// Input device tracking, used to hide the cursor during direct character control
+	enum InputDevice {
+		kInputDevicePointer,
+		kInputDeviceGamepad
+	};
+
+	static const uint32 _cursorFadeOutDelay = 2000; // ms
+
+	InputDevice _lastInputDevice;
+	uint32 _lastPointerInputTime;
 
 	bool _shouldToggleSubtitle;
 

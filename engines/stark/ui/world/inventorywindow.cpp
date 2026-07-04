@@ -30,6 +30,7 @@
 #include "engines/stark/services/services.h"
 #include "engines/stark/services/staticprovider.h"
 #include "engines/stark/services/gameinterface.h"
+#include "engines/stark/services/userinterface.h"
 #include "engines/stark/visual/image.h"
 
 namespace Stark {
@@ -287,6 +288,73 @@ void InventoryWindow::scrollUp() {
 	if (canScrollUp()) {
 		_firstVisibleSlot -= _visibleSlotsCount;
 	}
+}
+
+void InventoryWindow::navigateGrid(GridDirection direction) {
+	if (_renderEntries.empty()) {
+		return;
+	}
+
+	static const int32 columns = 5;
+
+	// Start from the slot currently under the cursor
+	Common::Point mousePos = getRelativeMousePosition();
+	int32 currentSlot = -1;
+	for (uint i = _firstVisibleSlot; i < _renderEntries.size() && isSlotVisible(i); i++) {
+		if (getSlotRect(i % _visibleSlotsCount).contains(mousePos)) {
+			currentSlot = i;
+			break;
+		}
+	}
+
+	int32 targetSlot;
+	if (currentSlot < 0) {
+		// The cursor is not over a slot, snap to the first visible one
+		targetSlot = _firstVisibleSlot;
+	} else {
+		targetSlot = currentSlot;
+
+		switch (direction) {
+			case kGridDirectionLeft:
+				if (currentSlot % columns > 0) {
+					targetSlot = currentSlot - 1;
+				}
+				break;
+			case kGridDirectionRight:
+				if (currentSlot % columns < columns - 1) {
+					targetSlot = currentSlot + 1;
+				}
+				break;
+			case kGridDirectionUp:
+				targetSlot = currentSlot - columns;
+				break;
+			case kGridDirectionDown:
+				targetSlot = currentSlot + columns;
+				break;
+		}
+	}
+
+	if (targetSlot < 0 || uint32(targetSlot) >= _renderEntries.size()) {
+		return;
+	}
+
+	// Change the visible page when moving out of it
+	while (uint32(targetSlot) < _firstVisibleSlot && canScrollUp()) {
+		scrollUp();
+	}
+	while (!isSlotVisible(targetSlot) && canScrollDown()) {
+		scrollDown();
+	}
+
+	if (uint32(targetSlot) < _firstVisibleSlot || !isSlotVisible(targetSlot)) {
+		return;
+	}
+
+	Common::Rect slotRect = getSlotRect(targetSlot % _visibleSlotsCount);
+	Common::Point center(_position.left + (slotRect.left + slotRect.right) / 2,
+	                     _position.top + (slotRect.top + slotRect.bottom) / 2);
+
+	StarkUserInterface->warpMouseTo(center);
 }
 
 void InventoryWindow::onGameLoop() {

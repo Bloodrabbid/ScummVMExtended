@@ -52,6 +52,7 @@ public:
 	void open() override;
 	void close() override;
 	void onScreenChanged() override;
+	void handleGridNavigation(GridDirection direction) override;
 
 	/**
 	 * Wait for all effect sounds to complete
@@ -100,6 +101,12 @@ public:
 
 	/** Is the specified point inside the widget? */
 	virtual bool isMouseInside(const Common::Point &mousePos) const;
+
+	/** Can the widget be reached with the D-pad grid navigation? */
+	virtual bool isGridNavigable() const;
+
+	/** Point the cursor should snap to when reaching the widget with the D-pad */
+	virtual Common::Point getCenter() const;
 
 	/** Called when the widget is clicked */
 	virtual void onClick();

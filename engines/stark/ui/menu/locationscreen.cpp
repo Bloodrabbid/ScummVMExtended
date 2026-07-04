@@ -22,9 +22,11 @@
 #include "engines/stark/ui/menu/locationscreen.h"
 
 #include "engines/stark/gfx/driver.h"
+#include "engines/stark/gfx/renderentry.h"
 
 #include "engines/stark/services/services.h"
 #include "engines/stark/services/staticprovider.h"
+#include "engines/stark/services/userinterface.h"
 
 #include "engines/stark/resources/item.h"
 #include "engines/stark/resources/location.h"
@@ -32,6 +34,7 @@
 
 #include "engines/stark/ui/cursor.h"
 
+#include "engines/stark/visual/image.h"
 #include "engines/stark/visual/text.h"
 
 #include "audio/mixer.h"
@@ -111,6 +114,68 @@ void StaticLocationScreen::onMouseMove(const Common::Point &pos) {
 	_cursor->setCursorType(_hoveredWidgetIndex > 0 ? Cursor::kActive : Cursor::kDefault);
 }
 
+void StaticLocationScreen::handleGridNavigation(GridDirection direction) {
+	// Move from the currently hovered widget, or from the cursor position
+	Common::Point from;
+	if (_hoveredWidgetIndex > 0 && uint(_hoveredWidgetIndex) < _widgets.size()) {
+		from = _widgets[_hoveredWidgetIndex]->getCenter();
+	} else {
+		from = _cursor->getMousePosition();
+	}
+
+	// Find the closest navigable widget in the requested direction.
+	// The first widget is always the background, it is ignored.
+	int bestWidgetIndex = -1;
+	int bestScore = 0;
+
+	for (uint i = 1; i < _widgets.size(); i++) {
+		StaticLocationWidget *widget = _widgets[i];
+		if (int(i) == _hoveredWidgetIndex || !widget->isVisible() || !widget->isGridNavigable()) {
+			continue;
+		}
+
+		Common::Point center = widget->getCenter();
+		int deltaX = center.x - from.x;
+		int deltaY = center.y - from.y;
+
+		int forward, lateral;
+		switch (direction) {
+			case kGridDirectionUp:
+				forward = -deltaY;
+				lateral = ABS(deltaX);
+				break;
+			case kGridDirectionDown:
+				forward = deltaY;
+				lateral = ABS(deltaX);
+				break;
+			case kGridDirectionLeft:
+				forward = -deltaX;
+				lateral = ABS(deltaY);
+				break;
+			default:
+				forward = deltaX;
+				lateral = ABS(deltaY);
+				break;
+		}
+
+		if (forward <= 0) {
+			// The widget is not in the requested direction
+			continue;
+		}
+
+		// Prefer widgets that are more aligned with the requested direction
+		int score = forward + 2 * lateral;
+		if (bestWidgetIndex < 0 || score < bestScore) {
+			bestWidgetIndex = i;
+			bestScore = score;
+		}
+	}
+
+	if (bestWidgetIndex > 0) {
+		StarkUserInterface->warpMouseTo(_widgets[bestWidgetIndex]->getCenter());
+	}
+}
+
 void StaticLocationScreen::onClick(const Common::Point &pos) {
 	for (uint i = 1; i < _widgets.size(); i++) {
 		StaticLocationWidget *widget = _widgets[i];
@@ -185,6 +250,34 @@ bool StaticLocationWidget::isMouseInside(const Common::Point &mousePos) const {
 
 	Common::Point relativePosition;
 	return _renderEntry->containsPoint(mousePos, relativePosition, Common::Rect());
+}
+
+bool StaticLocationWidget::isGridNavigable() const {
+	return _onClick != nullptr;
+}
+
+Common::Point StaticLocationWidget::getCenter() const {
+	if (!_renderEntry) {
+		return Common::Point();
+	}
+
+	Common::Point center = _renderEntry->getPosition();
+
+	VisualImageXMG *image = _renderEntry->getImage();
+	if (image) {
+		center.x += image->getWidth() / 2;
+		center.y += image->getHeight() / 2;
+		return center;
+	}
+
+	VisualText *text = _renderEntry->getText();
+	if (text) {
+		Common::Rect rect = text->getRect();
+		center.x += rect.width() / 2;
+		center.y += rect.height() / 2;
+	}
+
+	return center;
 }
 
 void StaticLocationWidget::onClick() {

@@ -38,9 +38,11 @@ public:
 	~ClickText();
 
 	void setPosition(const Common::Point &pos) { _position = pos; }
+	Common::Point getPosition() const { return _position; }
 	void render();
 	bool containsPoint(const Common::Point &point) const;
 	int getHeight() const { return _bbox.height(); }
+	int getWidth() const { return _bbox.width(); }
 
 	void setActive() { _curVisual = _visualActive; }
 	void setPassive() { _curVisual = _visualPassive; }

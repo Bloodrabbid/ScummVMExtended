@@ -64,7 +64,8 @@ void OpenGLSurfaceRenderer::render(const Bitmap *bitmap, const Common::Point &de
 
 	glVertexPointer(2, GL_FLOAT, sizeof(SurfaceVertex), &vertices[0].x);
 	glTexCoordPointer(2, GL_FLOAT, 2 * sizeof(float), ((const OpenGlBitmap *)bitmap)->getTexCoords());
-	glColor4f(1.0f - _fadeLevel, 1.0f - _fadeLevel, 1.0f - _fadeLevel, 1.0f);
+	// Textures are premultiplied, scaling all the components by the opacity fades the surface out
+	glColor4f((1.0f - _fadeLevel) * _opacity, (1.0f - _fadeLevel) * _opacity, (1.0f - _fadeLevel) * _opacity, _opacity);
 
 	bitmap->bind();
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -100,7 +101,7 @@ void OpenGLSurfaceRenderer::fill(const Color &color, const Common::Point &dest, 
 	glEnableClientState(GL_VERTEX_ARRAY);
 
 	glVertexPointer(2, GL_FLOAT, sizeof(SurfaceVertex), &vertices[0].x);
-	glColor4f((color.r / 255.0f) - _fadeLevel, (color.g / 255.0f) - _fadeLevel, (color.b / 255.0f) - _fadeLevel, color.a / 255.0f);
+	glColor4f(((color.r / 255.0f) - _fadeLevel) * _opacity, ((color.g / 255.0f) - _fadeLevel) * _opacity, ((color.b / 255.0f) - _fadeLevel) * _opacity, (color.a / 255.0f) * _opacity);
 
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 

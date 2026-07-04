@@ -66,6 +66,12 @@ public:
 	/** Select an option by index */
 	void selectOption(uint index);
 
+	/** Are there dialog options currently displayed? */
+	bool hasOptions() const { return !_options.empty(); }
+
+	/** Absolute position of the focused option's center, for cursor snapping */
+	Common::Point getFocusedOptionCenter() const;
+
 protected:
 	void onMouseMove(const Common::Point &pos) override;
 	void onClick(const Common::Point &pos) override;

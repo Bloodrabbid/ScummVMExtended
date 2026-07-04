@@ -153,6 +153,10 @@ void VisualImageXMG::setFadeLevel(float fadeLevel) {
 	_surfaceRenderer->setFadeLevel(fadeLevel);
 }
 
+void VisualImageXMG::setOpacity(float opacity) {
+	_surfaceRenderer->setOpacity(opacity);
+}
+
 bool VisualImageXMG::isPointSolid(const Common::Point &point) const {
 	assert(_surface);
 

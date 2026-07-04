@@ -44,7 +44,8 @@ public:
 		kTypeWalk            = 1,
 		kTypeFollowPath      = 2,
 		kTypeFollowPathLight = 3,
-		kTypeTurn            = 4
+		kTypeTurn            = 4,
+		kTypeDirectWalk      = 5
 	};
 
 	/** Movement factory */

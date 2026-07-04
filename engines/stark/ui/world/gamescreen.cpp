@@ -119,6 +119,22 @@ void GameScreen::handleDoubleClick() {
 	dispatchEvent(&Window::handleDoubleClick);
 }
 
+void GameScreen::handleGridNavigation(GridDirection direction) {
+	if (_inventoryWindow->isVisible()) {
+		_inventoryWindow->navigateGrid(direction);
+	} else if (_dialogPanel->hasOptions()) {
+		if (direction == kGridDirectionUp) {
+			_dialogPanel->focusPrevOption();
+		} else if (direction == kGridDirectionDown) {
+			_dialogPanel->focusNextOption();
+		} else {
+			return;
+		}
+
+		StarkUserInterface->warpMouseTo(_dialogPanel->getFocusedOptionCenter());
+	}
+}
+
 void GameScreen::dispatchEvent(WindowHandler handler) {
 	for (uint i = 0; i < _gameScreenWindows.size(); i++) {
 		if (_gameScreenWindows[i]->isMouseInside()) {

@@ -56,6 +56,14 @@ public:
 	/** Make cycle the cursor's brightness and play sound */
 	void setItemActive(bool fading);
 
+	/**
+	 * Request the cursor to smoothly fade out, or to reappear.
+	 *
+	 * Used to hide the cursor when the character is controlled directly
+	 * with a gamepad and the pointer is inactive.
+	 */
+	void setFadingOut(bool fadingOut);
+
 	/** Update when the screen resolution has changed */
 	void onScreenChanged();
 
@@ -79,6 +87,7 @@ public:
 	void setMouseHint(const Common::String &hint);
 private:
 	void updateFadeLevel();
+	void updateOpacity();
 	void updateHintDelay();
 
 	Gfx::Driver *_gfx;
@@ -97,6 +106,9 @@ private:
 	float _fadeLevel;
 	bool _fadeLevelIncreasing;
 	static const float _fadeValueMax;
+
+	bool _fadingOut;
+	float _opacity;
 };
 
 } // End of namespace Stark

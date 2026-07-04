@@ -21,6 +21,7 @@
 
 #include "engines/stark/movement/movement.h"
 
+#include "engines/stark/movement/directwalk.h"
 #include "engines/stark/movement/walk.h"
 #include "engines/stark/movement/followpath.h"
 #include "engines/stark/movement/followpathlight.h"
@@ -42,6 +43,8 @@ Movement *Movement::construct(uint32 type, Resources::ItemVisual *item) {
 			return new FollowPathLight(item);
 		case kTypeTurn:
 			return new Turn(Resources::Object::cast<Resources::FloorPositionedItem>(item));
+		case kTypeDirectWalk:
+			return new DirectWalk(Resources::Object::cast<Resources::FloorPositionedItem>(item));
 		default:
 			error("Unexpected movement type '%d'", type);
 	}

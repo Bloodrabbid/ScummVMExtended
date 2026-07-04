@@ -80,7 +80,9 @@ UserInterface::UserInterface(StarkEngine *vm, Gfx::Driver *gfx) :
 		_interactionAttemptDenied(false),
 		_currentScreen(nullptr),
 		_gameWindowThumbnail(nullptr),
-		_modalDialog(nullptr) {
+		_modalDialog(nullptr),
+		_lastInputDevice(kInputDevicePointer),
+		_lastPointerInputTime(0) {
 	_vm = vm;
 }
 
@@ -126,6 +128,14 @@ void UserInterface::init() {
 void UserInterface::onGameLoop() {
 	StarkStaticProvider->onGameLoop();
 
+	// Fade out the cursor when the character is controlled with the gamepad
+	// and the pointer has been inactive for a while
+	bool pointerIdle = g_system->getMillis() - _lastPointerInputTime > _cursorFadeOutDelay;
+	_cursor->setFadingOut(isInGameScreen()
+	                      && _lastInputDevice == kInputDeviceGamepad
+	                      && pointerIdle
+	                      && !_modalDialog->isVisible());
+
 	if (_modalDialog->isVisible()) {
 		_modalDialog->handleGameLoop();
 		_modalDialog->handleMouseMove();
@@ -142,7 +152,24 @@ void UserInterface::onGameLoop() {
 }
 
 void UserInterface::handleMouseMove(const Common::Point &pos) {
+	notifyPointerInput();
 	_cursor->setMousePosition(pos);
+}
+
+void UserInterface::notifyPointerInput() {
+	_lastInputDevice = kInputDevicePointer;
+	_lastPointerInputTime = g_system->getMillis();
+}
+
+void UserInterface::notifyGamepadWalk() {
+	_lastInputDevice = kInputDeviceGamepad;
+}
+
+void UserInterface::warpMouseTo(const Common::Point &posOriginal) {
+	Common::Point posCurrent = _gfx->convertCoordinateOriginalToCurrent(posOriginal);
+
+	g_system->warpMouse(posCurrent.x, posCurrent.y);
+	handleMouseMove(posCurrent);
 }
 
 void UserInterface::handleMouseUp() {
@@ -522,6 +549,14 @@ void UserInterface::handleActions(Common::CustomEventType customType) {
 				debug("The game is paused");
 			}
 		}
+	} else if (customType == kActionGridUp) {
+		_currentScreen->handleGridNavigation(kGridDirectionUp);
+	} else if (customType == kActionGridDown) {
+		_currentScreen->handleGridNavigation(kGridDirectionDown);
+	} else if (customType == kActionGridLeft) {
+		_currentScreen->handleGridNavigation(kGridDirectionLeft);
+	} else if (customType == kActionGridRight) {
+		_currentScreen->handleGridNavigation(kGridDirectionRight);
 	}
 
 	if (isInGameScreen()) {

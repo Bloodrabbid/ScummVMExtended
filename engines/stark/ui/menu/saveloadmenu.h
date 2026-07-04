@@ -145,6 +145,8 @@ public:
 	void onClick() override;
 	void onMouseMove(const Common::Point &mousePos) override;
 	void onScreenChanged() override;
+	bool isGridNavigable() const override;
+	Common::Point getCenter() const override;
 
 	int getSlot() { return _slot; }
 	Common::String getName() { return _name; }

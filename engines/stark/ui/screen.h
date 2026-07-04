@@ -73,6 +73,9 @@ public:
 	virtual void handleRightClick() = 0;
 	virtual void handleDoubleClick() = 0;
 
+	/** Move the cursor to the next interactive element in the specified direction */
+	virtual void handleGridNavigation(GridDirection direction) {}
+
 private:
 	Name _name;
 };

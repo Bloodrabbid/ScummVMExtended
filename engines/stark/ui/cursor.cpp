@@ -42,6 +42,8 @@ Cursor::Cursor(Gfx::Driver *gfx) :
 		_itemActive(false),
 		_fadeLevelIncreasing(true),
 		_fadeLevel(0),
+		_fadingOut(false),
+		_opacity(1.0f),
 		_hintDisplayDelay(150) {
 	setCursorType(kDefault);
 	_actionHoverSound = StarkStaticProvider->getUISound(StaticProvider::kActionHover);
@@ -104,6 +106,23 @@ void Cursor::updateFadeLevel() {
 	}
 }
 
+void Cursor::setFadingOut(bool fadingOut) {
+	_fadingOut = fadingOut;
+}
+
+void Cursor::updateOpacity() {
+	if (_fadingOut) {
+		// Fade out over about a third of a second
+		_opacity -= 0.003f * StarkGlobal->getMillisecondsPerGameloop();
+		if (_opacity < 0.0f) {
+			_opacity = 0.0f;
+		}
+	} else {
+		// Reappear instantly whenever the pointer is in use
+		_opacity = 1.0f;
+	}
+}
+
 void Cursor::updateHintDelay() {
 	if (_hintDisplayDelay >= 0) {
 		_hintDisplayDelay -= StarkGlobal->getMillisecondsPerGameloop();
@@ -116,13 +135,18 @@ void Cursor::updateHintDelay() {
 
 void Cursor::render() {
 	updateFadeLevel();
+	updateOpacity();
 	updateHintDelay();
+
+	if (_opacity <= 0.0f) {
+		return;
+	}
 
 	if (!_gfx->isPosInScreenBounds(_mousePos)) {
 		setCursorType(Cursor::kPassive);
 	}
 
-	if (_mouseText && _gfx->gameViewport().contains(_mousePos) && _hintDisplayDelay <= 0) {
+	if (_mouseText && _opacity >= 1.0f && _gfx->gameViewport().contains(_mousePos) && _hintDisplayDelay <= 0) {
 		_gfx->setScreenViewport(false);
 
 		// TODO: Should probably query the image for the width of the cursor
@@ -146,7 +170,11 @@ void Cursor::render() {
 		_gfx->setScreenViewport(true); // Unscaled viewport so that cursor is drawn on native pixel space, thus no 'skipping', perform scaling below instead
 
 		_cursorImage->setFadeLevel(_fadeLevel);
+		_cursorImage->setOpacity(_opacity);
 		_cursorImage->render(_mousePos, true, false); // Draws image (scaled)
+
+		// The image may be shared with other parts of the UI, don't leak the cursor opacity to them
+		_cursorImage->setOpacity(1.0f);
 	}
 }
 

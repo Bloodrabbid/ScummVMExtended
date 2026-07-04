@@ -41,6 +41,14 @@ namespace Resources {
 	typedef Common::Array<uint32> ActionArray;
 }
 
+/** Direction of a D-pad grid navigation request */
+enum GridDirection {
+	kGridDirectionUp,
+	kGridDirectionDown,
+	kGridDirectionLeft,
+	kGridDirectionRight
+};
+
 /**
  * A window is a portion of the game screen.
  *

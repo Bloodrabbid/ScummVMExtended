@@ -73,10 +73,18 @@ public:
 	 */
 	void setSnapToGrid(bool snapToGrid);
 
+	/**
+	 * The whole surface is blended with the specified opacity
+	 *
+	 * It is a value between 0 (fully transparent) and 1 (fully opaque)
+	 */
+	void setOpacity(float opacity);
+
 protected:
 	bool _noScalingOverride;
 	float _fadeLevel;
 	bool _snapToGrid;
+	float _opacity;
 };
 
 } // End of namespace Gfx

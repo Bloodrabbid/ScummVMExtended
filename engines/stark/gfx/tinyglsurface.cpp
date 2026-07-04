@@ -68,7 +68,7 @@ void TinyGLSurfaceRenderer::render(const Bitmap *bitmap, const Common::Point &de
 	}
 
 	transform.sourceRectangle(0, 0, blitImageWidth, blitImageHeight);
-	transform.tint(1.0, 1.0 - _fadeLevel, 1.0 - _fadeLevel, 1.0 - _fadeLevel);
+	transform.tint(_opacity, 1.0 - _fadeLevel, 1.0 - _fadeLevel, 1.0 - _fadeLevel);
 	tglBlit(blitImage, transform);
 
 	_gfx->end2DMode();
@@ -93,7 +93,7 @@ void TinyGLSurfaceRenderer::fill(const Color &color, const Common::Point &dest, 
 	tglEnableClientState(TGL_VERTEX_ARRAY);
 
 	tglVertexPointer(2, TGL_FLOAT, sizeof(SurfaceVertex), &vertices[0].x);
-	tglColor4f((color.r / 255.0f) - _fadeLevel, (color.g / 255.0f) - _fadeLevel, (color.b / 255.0f) - _fadeLevel, color.a / 255.0f);
+	tglColor4f(((color.r / 255.0f) - _fadeLevel) * _opacity, ((color.g / 255.0f) - _fadeLevel) * _opacity, ((color.b / 255.0f) - _fadeLevel) * _opacity, (color.a / 255.0f) * _opacity);
 
 	tglDrawArrays(TGL_TRIANGLE_STRIP, 0, 4);
 

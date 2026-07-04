@@ -54,6 +54,7 @@ public:
 	void handleClick() override;
 	void handleRightClick() override;
 	void handleDoubleClick() override;
+	void handleGridNavigation(GridDirection direction) override;
 
 	/** Get individual windows */
 	InventoryWindow *getInventoryWindow() const;

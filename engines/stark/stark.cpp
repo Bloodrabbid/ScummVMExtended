@@ -64,7 +64,14 @@ StarkEngine::StarkEngine(OSystem *syst, const ADGameDescription *gameDesc) :
 		Engine(syst),
 		_frameLimiter(nullptr),
 		_gameDescription(gameDesc),
-		_lastClickTime(0) {
+		_lastClickTime(0),
+		_walkAxisX(0.f),
+		_walkAxisY(0.f),
+		_cursorAxisX(0.f),
+		_cursorAxisY(0.f),
+		_cursorSubPixelX(0.f),
+		_cursorSubPixelY(0.f),
+		_lastGamepadUpdateMillis(0) {
 
 	addModsToSearchPath();
 }
@@ -95,6 +102,10 @@ StarkEngine::~StarkEngine() {
 Common::Error StarkEngine::run() {
 	setDebugger(new Console());
 	_frameLimiter = new Graphics::FrameLimiter(_system, ConfMan.getInt("engine_speed"));
+
+	// Use direct touch mode by default: tapping the touch screen moves the
+	// cursor to the tap position and generates a click
+	ConfMan.registerDefault("touchpad_mouse_mode", false);
 
 	// Get the screen prepared
 	Gfx::Driver *gfx = Gfx::Driver::create();
@@ -159,6 +170,7 @@ void StarkEngine::mainLoop() {
 		_frameLimiter->startFrame();
 
 		processEvents();
+		updateGamepadInput();
 
 		if (StarkUserInterface->shouldExit())
 			break;
@@ -218,9 +230,97 @@ void StarkEngine::processEvents() {
 			_lastClickTime = _system->getMillis();
 		} else if (e.type == Common::EVENT_RBUTTONDOWN) {
 			StarkUserInterface->handleRightClick();
+		} else if (e.type == Common::EVENT_JOYAXIS_MOTION) {
+			handleJoystickAxis(e.joystick.axis, e.joystick.position);
 		} else if (e.type == Common::EVENT_SCREEN_CHANGED) {
 			onScreenChanged();
 		}
+	}
+}
+
+void StarkEngine::handleJoystickAxis(byte axis, int16 position) {
+	// The walk pseudo axes are keymapper-mapped half axes: the magnitude is
+	// always positive, the direction is identified by the axis. When a full
+	// axis crosses zero both of its half axes fire a zero position event,
+	// so ignore resets coming from the opposite half axis.
+	float value = position / (float)Common::JOYAXIS_MAX;
+
+	switch (axis) {
+	case kStarkAxisWalkUp:
+		if (position != 0 || _walkAxisY <= 0.f)
+			_walkAxisY = -value;
+		break;
+	case kStarkAxisWalkDown:
+		if (position != 0 || _walkAxisY >= 0.f)
+			_walkAxisY = value;
+		break;
+	case kStarkAxisWalkLeft:
+		if (position != 0 || _walkAxisX >= 0.f)
+			_walkAxisX = -value;
+		break;
+	case kStarkAxisWalkRight:
+		if (position != 0 || _walkAxisX <= 0.f)
+			_walkAxisX = value;
+		break;
+	case Common::JOYSTICK_AXIS_RIGHT_STICK_X:
+		_cursorAxisX = value;
+		break;
+	case Common::JOYSTICK_AXIS_RIGHT_STICK_Y:
+		_cursorAxisY = value;
+		break;
+	default:
+		break;
+	}
+}
+
+void StarkEngine::updateGamepadInput() {
+	uint32 now = _system->getMillis();
+	uint32 deltaMillis = now - _lastGamepadUpdateMillis;
+	_lastGamepadUpdateMillis = now;
+	if (deltaMillis > 100) {
+		deltaMillis = 100; // Recover gracefully from pauses and long frames
+	}
+
+	if (isPaused()) {
+		return;
+	}
+
+	float deadZone = ConfMan.getInt("joystick_deadzone") * 1000.f / (float)Common::JOYAXIS_MAX;
+
+	// The right stick drives the cursor, like a mouse would
+	float cursorMagnitude = sqrtf(_cursorAxisX * _cursorAxisX + _cursorAxisY * _cursorAxisY);
+	if (cursorMagnitude > deadZone) {
+		float scaling = (cursorMagnitude - deadZone) / (1.f - deadZone) / cursorMagnitude;
+		float speed = g_system->getWidth() * 0.75f; // Pixels per second at full deflection
+
+		float deltaX = _cursorSubPixelX + _cursorAxisX * scaling * speed * deltaMillis / 1000.f;
+		float deltaY = _cursorSubPixelY + _cursorAxisY * scaling * speed * deltaMillis / 1000.f;
+
+		Common::Point delta((int16)deltaX, (int16)deltaY);
+		_cursorSubPixelX = deltaX - delta.x;
+		_cursorSubPixelY = deltaY - delta.y;
+
+		if (delta.x != 0 || delta.y != 0) {
+			Common::Point pos = _eventMan->getMousePos() + delta;
+			pos.x = CLIP<int16>(pos.x, 0, g_system->getWidth() - 1);
+			pos.y = CLIP<int16>(pos.y, 0, g_system->getHeight() - 1);
+
+			g_system->warpMouse(pos.x, pos.y);
+			StarkUserInterface->handleMouseMove(pos);
+		}
+	} else {
+		_cursorSubPixelX = 0.f;
+		_cursorSubPixelY = 0.f;
+	}
+
+	// The left stick walks the character directly
+	float walkMagnitude = sqrtf(_walkAxisX * _walkAxisX + _walkAxisY * _walkAxisY);
+	if (walkMagnitude > deadZone) {
+		float scaling = (walkMagnitude - deadZone) / (1.f - deadZone) / walkMagnitude;
+		StarkGameInterface->directWalk(_walkAxisX * scaling, _walkAxisY * scaling);
+		StarkUserInterface->notifyGamepadWalk();
+	} else {
+		StarkGameInterface->directWalk(0.f, 0.f);
 	}
 }
 
