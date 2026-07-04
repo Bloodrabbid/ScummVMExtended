@@ -72,6 +72,23 @@ public:
 	/** Absolute position of the focused option's center, for cursor snapping */
 	Common::Point getFocusedOptionCenter() const;
 
+	/**
+	 * Teleport the cursor to the focused option.
+	 *
+	 * Used by the D-pad navigation so the cursor follows the focus.
+	 * The hover logic is inhibited until the pointer actually moves,
+	 * so it cannot override the focus.
+	 */
+	void snapCursorToFocusedOption();
+
+	/**
+	 * Move the focus to the option currently under the cursor, if any.
+	 *
+	 * Makes sure the D-pad navigation steps from the option the player
+	 * sees targeted, even if the focus got out of sync with the cursor.
+	 */
+	void syncFocusToCursor();
+
 protected:
 	void onMouseMove(const Common::Point &pos) override;
 	void onClick(const Common::Point &pos) override;
@@ -110,6 +127,7 @@ private:
 	uint32 _focusedOption;
 	Common::Array<ClickText*> _options;
 	bool _acceptIdleMousePos;
+	Common::Point _prevMousePos;
 
 	const Gfx::Color _aprilColor = Gfx::Color(0xFF, 0xC0, 0x00);
 	const Gfx::Color _otherColor = Gfx::Color(0xFF, 0x40, 0x40);

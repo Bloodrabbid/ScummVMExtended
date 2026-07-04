@@ -163,29 +163,40 @@ bool GameInterface::tryAutoExit() {
 		return false;
 	}
 
-	// Project the character position to the game window, like the mouse hit tests expect
-	Common::Point screenPos = StarkScene->convertPosition3DToGameScreenOriginal(april->getPosition3D());
-	Common::Point windowPos(screenPos.x, screenPos.y - Gfx::Driver::kTopBorderHeight);
+	// Compute the character's screen space bounding rectangle, in the same
+	// coordinates as the exit hotspot positions. The actor bounding rect is
+	// based on Scene::convertPosition3DToGameScreenOriginal, whose vertical
+	// origin is offset by the bottom border height compared to the game
+	// window coordinates the render entries use.
+	Gfx::RenderEntry *aprilRenderEntry = april->getRenderEntry(location->getScrollPosition());
+	if (!aprilRenderEntry) {
+		return false;
+	}
 
-	// Look for an exit hotspot under the character's feet
-	Gfx::RenderEntryArray renderEntries = location->listRenderEntries();
+	Common::Rect aprilRect = aprilRenderEntry->getBoundingRect();
+	if (aprilRect.isEmpty()) {
+		return false;
+	}
+	aprilRect.translate(0, -Gfx::Driver::kBottomBorderHeight);
+	aprilRect.grow(8);
+
+	// Look for an exit hotspot the character is standing over
+	Common::Array<Resources::Item *> items = location->listChildrenRecursive<Resources::Item>();
+
 	Resources::ItemVisual *exitItem = nullptr;
-	Common::Point exitRelativePosition;
-	for (int i = renderEntries.size() - 1; i >= 0; i--) {
-		Resources::ItemVisual *item = renderEntries[i]->getOwner();
-		if (!item || item == april) {
+	Common::Point exitPosition;
+	for (uint i = 0; i < items.size() && !exitItem; i++) {
+		if (!items[i]->isEnabled()) {
 			continue;
 		}
 
-		Common::Point relativePosition;
-		if (!renderEntries[i]->containsPoint(windowPos, relativePosition, Common::Rect())) {
-			continue;
-		}
-
-		if (itemGetDefaultActionAt(item, relativePosition) == Resources::PATTable::kActionExit) {
-			exitItem = item;
-			exitRelativePosition = relativePosition;
-			break;
+		Common::Array<Common::Point> exitPositions = items[i]->listExitPositions();
+		for (uint j = 0; j < exitPositions.size(); j++) {
+			if (aprilRect.contains(exitPositions[j])) {
+				exitItem = Resources::Object::cast<Resources::ItemVisual>(items[i]);
+				exitPosition = exitPositions[j];
+				break;
+			}
 		}
 	}
 
@@ -198,6 +209,14 @@ bool GameInterface::tryAutoExit() {
 		// This exit was already triggered, wait for the character to leave its hotspot
 		return false;
 	}
+
+	Gfx::RenderEntry *exitRenderEntry = exitItem->getRenderEntry(location->getScrollPosition());
+	if (!exitRenderEntry) {
+		return false;
+	}
+
+	// The hotspot lookup expects item relative coordinates
+	Common::Point exitRelativePosition = exitPosition - exitRenderEntry->getPosition();
 
 	_autoExitItem = exitItem;
 	itemDoActionAt(exitItem, Resources::PATTable::kActionExit, exitRelativePosition);

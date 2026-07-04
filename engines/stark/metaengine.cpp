@@ -202,7 +202,7 @@ Common::KeymapArray StarkMetaEngine::initKeymaps(const char *target) const {
 	act = new Action("DIARYMENU", _("Diary menu"));
 	act->setCustomEngineActionEvent(kActionDiaryMenu);
 	act->addDefaultInputMapping("F1");
-	act->addDefaultInputMapping("JOY_X");
+	act->addDefaultInputMapping("JOY_BACK");
 	gameKeyMap->addAction(act);
 
 	act = new Action("SAVEGAME", _("Save game"));
@@ -384,7 +384,7 @@ Common::KeymapArray StarkMetaEngine::initKeymaps(const char *target) const {
 	act = new Action("SKIP", _("Skip video sequence or dialog"));
 	act->setCustomEngineActionEvent(kActionSkip);
 	act->addDefaultInputMapping("ESCAPE");
-	act->addDefaultInputMapping("JOY_BACK");
+	act->addDefaultInputMapping("JOY_X");
 	gameKeyMap->addAction(act);
 
 

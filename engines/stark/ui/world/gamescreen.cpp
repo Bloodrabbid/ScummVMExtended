@@ -125,6 +125,9 @@ void GameScreen::handleGridNavigation(GridDirection direction) {
 	} else if (_inventoryWindow->isVisible()) {
 		_inventoryWindow->navigateGrid(direction);
 	} else if (_dialogPanel->hasOptions()) {
+		// Step from the option the player sees targeted by the cursor
+		_dialogPanel->syncFocusToCursor();
+
 		if (direction == kGridDirectionUp) {
 			_dialogPanel->focusPrevOption();
 		} else if (direction == kGridDirectionDown) {
@@ -133,7 +136,7 @@ void GameScreen::handleGridNavigation(GridDirection direction) {
 			return;
 		}
 
-		StarkUserInterface->warpMouseTo(_dialogPanel->getFocusedOptionCenter());
+		_dialogPanel->snapCursorToFocusedOption();
 	}
 }
 
