@@ -160,35 +160,39 @@ void GameScreen::snapCursorToExit(GridDirection direction) {
 	int dirX = (direction == kGridDirectionRight) - (direction == kGridDirectionLeft);
 	int dirY = (direction == kGridDirectionDown) - (direction == kGridDirectionUp);
 
-	int bestDirected = -1;
-	int bestDirectedDistSq = 0;
-	int bestAny = -1;
-	int bestAnyDistSq = 0;
+	// Pick the exit that lies in the pressed direction from the cursor,
+	// preferring the closest and best aligned. Diagonal exits still count.
+	// If there is no exit in that direction, the cursor stays put.
+	int chosen = -1;
+	int bestScore = 0;
 
 	for (uint i = 0; i < exitPositions.size(); i++) {
 		Common::Point exitPoint(exitPositions[i].x, exitPositions[i].y + Gfx::Driver::kTopBorderHeight);
 
 		int dx = exitPoint.x - cursor.x;
 		int dy = exitPoint.y - cursor.y;
-		int distSq = dx * dx + dy * dy;
 
-		if (bestAny < 0 || distSq < bestAnyDistSq) {
-			bestAny = i;
-			bestAnyDistSq = distSq;
+		// Component along the pressed direction, and perpendicular to it
+		int along = dx * dirX + dy * dirY;
+		int across = ABS(dx * dirY - dy * dirX);
+
+		// The exit must be meaningfully in the pressed direction
+		if (along <= 4) {
+			continue;
 		}
 
-		// Is the exit in the pressed direction, and mostly along that axis?
-		int along = dx * dirX + dy * dirY;
-		int across = ABS(dx * dirY) + ABS(dy * dirX);
-		if (along > 0 && along >= across) {
-			if (bestDirected < 0 || distSq < bestDirectedDistSq) {
-				bestDirected = i;
-				bestDirectedDistSq = distSq;
-			}
+		// Prefer exits that are close and well aligned with the direction
+		int score = along + 2 * across;
+		if (chosen < 0 || score < bestScore) {
+			chosen = i;
+			bestScore = score;
 		}
 	}
 
-	int chosen = bestDirected >= 0 ? bestDirected : bestAny;
+	if (chosen < 0) {
+		return;
+	}
+
 	Common::Point target(exitPositions[chosen].x,
 	                     exitPositions[chosen].y + Gfx::Driver::kTopBorderHeight);
 
