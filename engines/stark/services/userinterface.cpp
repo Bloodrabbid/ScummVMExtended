@@ -168,8 +168,13 @@ void UserInterface::notifyGamepadWalk() {
 void UserInterface::warpMouseTo(const Common::Point &posOriginal) {
 	Common::Point posCurrent = _gfx->convertCoordinateOriginalToCurrent(posOriginal);
 
+	// This is a synthetic move driven by the D-pad, not a real pointer input.
+	// Mark it as a gamepad interaction so the hover logic does not fight the
+	// gamepad driven selection, but keep the cursor visible.
 	g_system->warpMouse(posCurrent.x, posCurrent.y);
-	handleMouseMove(posCurrent);
+	_cursor->setMousePosition(posCurrent);
+	_lastInputDevice = kInputDeviceGamepad;
+	_lastPointerInputTime = g_system->getMillis();
 }
 
 void UserInterface::handleMouseUp() {

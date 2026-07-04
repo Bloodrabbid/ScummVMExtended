@@ -207,6 +207,14 @@ public:
 	/** Notify that the character is being moved with the gamepad stick */
 	void notifyGamepadWalk();
 
+	/**
+	 * Is the gamepad currently the active input device?
+	 *
+	 * While true, hover based selection logic should not override the
+	 * gamepad driven focus.
+	 */
+	bool isLastInputGamepad() const { return _lastInputDevice == kInputDeviceGamepad; }
+
 	/** Teleport the cursor to a position given in original (640x480) coordinates */
 	void warpMouseTo(const Common::Point &posOriginal);
 

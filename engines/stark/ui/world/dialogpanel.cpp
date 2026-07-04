@@ -202,7 +202,12 @@ void DialogPanel::onMouseMove(const Common::Point &pos) {
 	if (_subtitleVisual) {
 		_cursor->setCursorType(Cursor::kDefault);
 	} else if (!_options.empty()) {
-		if (pos != _prevMousePos || _acceptIdleMousePos) {
+		// Only let the cursor hover drive the focus when the pointer is the
+		// active input device. When navigating with the gamepad the focus is
+		// controlled explicitly, and the hover must not override it.
+		bool pointerActive = !StarkUserInterface->isLastInputGamepad();
+
+		if (pointerActive && (pos != _prevMousePos || _acceptIdleMousePos)) {
 			for (uint i = _firstVisibleOption; i <= _lastVisibleOption; ++i) {
 				if (_options[i]->containsPoint(pos)) {
 					_options[_focusedOption]->setPassive();
@@ -276,9 +281,15 @@ void DialogPanel::scrollUp() {
 	_lastVisibleOption = _firstVisibleOption;
 	updateFirstVisibleOption();
 
-	_options[_focusedOption]->setPassive();
-	_focusedOption = _lastVisibleOption;
-	_options[_focusedOption]->setActive();
+	// Keep the focus on a visible option, moving it as little as possible
+	uint32 newFocusedOption = CLIP(_focusedOption, _firstVisibleOption, _lastVisibleOption);
+	if (newFocusedOption != _focusedOption) {
+		_options[_focusedOption]->setPassive();
+		_focusedOption = newFocusedOption;
+		_options[_focusedOption]->setActive();
+	}
+
+	layoutOptions();
 }
 
 void DialogPanel::scrollDown() {
@@ -287,9 +298,15 @@ void DialogPanel::scrollDown() {
 	_firstVisibleOption = _lastVisibleOption;
 	updateLastVisibleOption();
 
-	_options[_focusedOption]->setPassive();
-	_focusedOption = _firstVisibleOption;
-	_options[_focusedOption]->setActive();
+	// Keep the focus on a visible option, moving it as little as possible
+	uint32 newFocusedOption = CLIP(_focusedOption, _firstVisibleOption, _lastVisibleOption);
+	if (newFocusedOption != _focusedOption) {
+		_options[_focusedOption]->setPassive();
+		_focusedOption = newFocusedOption;
+		_options[_focusedOption]->setActive();
+	}
+
+	layoutOptions();
 }
 
 void DialogPanel::focusNextOption() {
@@ -348,22 +365,6 @@ void DialogPanel::snapCursorToFocusedOption() {
 	_prevMousePos = center - Common::Point(_position.left, _position.top);
 
 	StarkUserInterface->warpMouseTo(center);
-}
-
-void DialogPanel::syncFocusToCursor() {
-	if (_options.empty()) {
-		return;
-	}
-
-	Common::Point pos = getRelativeMousePosition();
-	for (uint i = _firstVisibleOption; i <= _lastVisibleOption; ++i) {
-		if (i != _focusedOption && _options[i]->containsPoint(pos)) {
-			_options[_focusedOption]->setPassive();
-			_focusedOption = i;
-			_options[_focusedOption]->setActive();
-			break;
-		}
-	}
 }
 
 void DialogPanel::selectFocusedOption() {

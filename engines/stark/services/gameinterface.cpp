@@ -21,6 +21,8 @@
 
 #include "engines/stark/services/gameinterface.h"
 
+#include "engines/stark/debug.h"
+
 #include "engines/stark/movement/directwalk.h"
 #include "engines/stark/movement/walk.h"
 
@@ -163,39 +165,45 @@ bool GameInterface::tryAutoExit() {
 		return false;
 	}
 
-	// Compute the character's screen space bounding rectangle, in the same
-	// coordinates as the exit hotspot positions. The actor bounding rect is
-	// based on Scene::convertPosition3DToGameScreenOriginal, whose vertical
-	// origin is offset by the bottom border height compared to the game
-	// window coordinates the render entries use.
-	Gfx::RenderEntry *aprilRenderEntry = april->getRenderEntry(location->getScrollPosition());
-	if (!aprilRenderEntry) {
-		return false;
-	}
+	// Project the character's floor position (her feet) to screen space, then
+	// bring it into the game window coordinates the exit hotspots use, whose
+	// vertical origin is below the top border (like the mouse hit tests).
+	Common::Point aprilPoint = StarkScene->convertPosition3DToGameScreenOriginal(april->getPosition3D());
+	aprilPoint.y -= Gfx::Driver::kTopBorderHeight;
 
-	Common::Rect aprilRect = aprilRenderEntry->getBoundingRect();
-	if (aprilRect.isEmpty()) {
-		return false;
-	}
-	aprilRect.translate(0, -Gfx::Driver::kBottomBorderHeight);
-	aprilRect.grow(8);
+	// Look for the closest exit hotspot the character is standing near. The
+	// horizontal tolerance is tight since doorways are approached sideways;
+	// the vertical one is loose to absorb the projection's vertical offset.
+	const int kExitToleranceX = 40;
+	const int kExitToleranceY = 80;
 
-	// Look for an exit hotspot the character is standing over
 	Common::Array<Resources::Item *> items = location->listChildrenRecursive<Resources::Item>();
 
 	Resources::ItemVisual *exitItem = nullptr;
 	Common::Point exitPosition;
-	for (uint i = 0; i < items.size() && !exitItem; i++) {
+	int bestDistanceSq = -1;
+	for (uint i = 0; i < items.size(); i++) {
 		if (!items[i]->isEnabled()) {
 			continue;
 		}
 
 		Common::Array<Common::Point> exitPositions = items[i]->listExitPositions();
 		for (uint j = 0; j < exitPositions.size(); j++) {
-			if (aprilRect.contains(exitPositions[j])) {
+			int dx = exitPositions[j].x - aprilPoint.x;
+			int dy = exitPositions[j].y - aprilPoint.y;
+
+			debugC(3, kDebugUnknown, "tryAutoExit: april=(%d,%d) exit=(%d,%d) d=(%d,%d)",
+			       aprilPoint.x, aprilPoint.y, exitPositions[j].x, exitPositions[j].y, dx, dy);
+
+			if (ABS(dx) > kExitToleranceX || ABS(dy) > kExitToleranceY) {
+				continue;
+			}
+
+			int distanceSq = dx * dx + dy * dy;
+			if (bestDistanceSq < 0 || distanceSq < bestDistanceSq) {
+				bestDistanceSq = distanceSq;
 				exitItem = Resources::Object::cast<Resources::ItemVisual>(items[i]);
 				exitPosition = exitPositions[j];
-				break;
 			}
 		}
 	}

@@ -81,14 +81,6 @@ public:
 	 */
 	void snapCursorToFocusedOption();
 
-	/**
-	 * Move the focus to the option currently under the cursor, if any.
-	 *
-	 * Makes sure the D-pad navigation steps from the option the player
-	 * sees targeted, even if the focus got out of sync with the cursor.
-	 */
-	void syncFocusToCursor();
-
 protected:
 	void onMouseMove(const Common::Point &pos) override;
 	void onClick(const Common::Point &pos) override;
