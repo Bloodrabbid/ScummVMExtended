@@ -62,16 +62,6 @@ public:
 	 */
 	void directWalk(float x, float y);
 
-	/**
-	 * Trigger the exit hotspot the character is standing on, if any.
-	 *
-	 * Allows changing location by simply walking into an exit when
-	 * controlling the character directly with a gamepad.
-	 *
-	 * @return true if an exit was triggered
-	 */
-	bool tryAutoExit();
-
 	VisualImageXMG *getActionImage(uint32 itemIndex, bool active);
 	VisualImageXMG *getCursorImage(uint32 itemIndex);
 
@@ -106,11 +96,6 @@ public:
 
 	/** List all the exit positions */
 	Common::Array<Common::Point> listExitPositions();
-
-private:
-	// The exit item already triggered by walking into it, not to fire it
-	// again until the character leaves its hotspot
-	Resources::ItemVisual *_autoExitItem;
 };
 
 } // End of namespace Stark

@@ -22,7 +22,9 @@
 #include "engines/stark/ui/world/gamescreen.h"
 #include "engines/stark/services/services.h"
 #include "engines/stark/services/userinterface.h"
+#include "engines/stark/services/gameinterface.h"
 #include "engines/stark/services/global.h"
+#include "engines/stark/gfx/driver.h"
 #include "engines/stark/ui/cursor.h"
 #include "engines/stark/ui/world/actionmenu.h"
 #include "engines/stark/ui/world/dialogpanel.h"
@@ -134,7 +136,66 @@ void GameScreen::handleGridNavigation(GridDirection direction) {
 		}
 
 		_dialogPanel->snapCursorToFocusedOption();
+	} else {
+		// Plain gameplay: jump the cursor to an exit so it can be triggered
+		// with a single tap instead of dragging it across the screen
+		snapCursorToExit(direction);
 	}
+}
+
+void GameScreen::snapCursorToExit(GridDirection direction) {
+	if (!StarkUserInterface->isInteractive()) {
+		return;
+	}
+
+	Common::Array<Common::Point> exitPositions = StarkGameInterface->listExitPositions();
+	if (exitPositions.empty()) {
+		return;
+	}
+
+	// The exit positions are in game window coordinates. Bring them into the
+	// original screen coordinates the cursor uses by adding the top border.
+	Common::Point cursor = _cursor->getMousePosition();
+
+	int dirX = (direction == kGridDirectionRight) - (direction == kGridDirectionLeft);
+	int dirY = (direction == kGridDirectionDown) - (direction == kGridDirectionUp);
+
+	int bestDirected = -1;
+	int bestDirectedDistSq = 0;
+	int bestAny = -1;
+	int bestAnyDistSq = 0;
+
+	for (uint i = 0; i < exitPositions.size(); i++) {
+		Common::Point exitPoint(exitPositions[i].x, exitPositions[i].y + Gfx::Driver::kTopBorderHeight);
+
+		int dx = exitPoint.x - cursor.x;
+		int dy = exitPoint.y - cursor.y;
+		int distSq = dx * dx + dy * dy;
+
+		if (bestAny < 0 || distSq < bestAnyDistSq) {
+			bestAny = i;
+			bestAnyDistSq = distSq;
+		}
+
+		// Is the exit in the pressed direction, and mostly along that axis?
+		int along = dx * dirX + dy * dirY;
+		int across = ABS(dx * dirY) + ABS(dy * dirX);
+		if (along > 0 && along >= across) {
+			if (bestDirected < 0 || distSq < bestDirectedDistSq) {
+				bestDirected = i;
+				bestDirectedDistSq = distSq;
+			}
+		}
+	}
+
+	int chosen = bestDirected >= 0 ? bestDirected : bestAny;
+	Common::Point target(exitPositions[chosen].x,
+	                     exitPositions[chosen].y + Gfx::Driver::kTopBorderHeight);
+
+	// Make sure the exit indicators are visible so the player sees the target
+	_gameWindow->setDisplayExit(true);
+
+	StarkUserInterface->warpMouseTo(target);
 }
 
 void GameScreen::dispatchEvent(WindowHandler handler) {

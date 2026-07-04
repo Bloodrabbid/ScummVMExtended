@@ -88,6 +88,9 @@ private:
 	typedef void (Window::*WindowHandler)();
 	void dispatchEvent(WindowHandler handler);
 	void pauseGame(bool pause);
+
+	/** Snap the cursor to an exit in the given direction, for gamepad users */
+	void snapCursorToExit(GridDirection direction);
 };
 
 } // End of namespace Stark

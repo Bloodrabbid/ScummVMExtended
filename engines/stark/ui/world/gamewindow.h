@@ -49,6 +49,9 @@ public:
 	/** Toggle the display of exit locations */
 	void toggleExitDisplay() { _displayExit = !_displayExit; }
 
+	/** Set the display of exit locations */
+	void setDisplayExit(bool display) { _displayExit = display; }
+
 protected:
 	void onMouseMove(const Common::Point &pos) override;
 	void onClick(const Common::Point &pos) override;

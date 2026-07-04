@@ -48,7 +48,7 @@
 
 namespace Stark {
 
-GameInterface::GameInterface() : _autoExitItem(nullptr) {
+GameInterface::GameInterface() {
 }
 
 GameInterface::~GameInterface() {
@@ -147,89 +147,6 @@ void GameInterface::directWalk(float x, float y) {
 		// The movement stops itself on the next game loop when the vector is null
 		directWalk->setInputVector(x, y);
 	}
-}
-
-bool GameInterface::tryAutoExit() {
-	if (!StarkUserInterface->isInteractive() || !StarkUserInterface->isInGameScreen()) {
-		return false;
-	}
-
-	Current *current = StarkGlobal->getCurrent();
-	if (!current) {
-		return false;
-	}
-
-	Resources::ModelItem *april = current->getInteractive();
-	Resources::Location *location = current->getLocation();
-	if (!april || !location) {
-		return false;
-	}
-
-	// Project the character's floor position (her feet) to screen space, then
-	// bring it into the game window coordinates the exit hotspots use, whose
-	// vertical origin is below the top border (like the mouse hit tests).
-	Common::Point aprilPoint = StarkScene->convertPosition3DToGameScreenOriginal(april->getPosition3D());
-	aprilPoint.y -= Gfx::Driver::kTopBorderHeight;
-
-	// Look for the closest exit hotspot the character is standing near. The
-	// horizontal tolerance is tight since doorways are approached sideways;
-	// the vertical one is loose to absorb the projection's vertical offset.
-	const int kExitToleranceX = 40;
-	const int kExitToleranceY = 80;
-
-	Common::Array<Resources::Item *> items = location->listChildrenRecursive<Resources::Item>();
-
-	Resources::ItemVisual *exitItem = nullptr;
-	Common::Point exitPosition;
-	int bestDistanceSq = -1;
-	for (uint i = 0; i < items.size(); i++) {
-		if (!items[i]->isEnabled()) {
-			continue;
-		}
-
-		Common::Array<Common::Point> exitPositions = items[i]->listExitPositions();
-		for (uint j = 0; j < exitPositions.size(); j++) {
-			int dx = exitPositions[j].x - aprilPoint.x;
-			int dy = exitPositions[j].y - aprilPoint.y;
-
-			debugC(3, kDebugUnknown, "tryAutoExit: april=(%d,%d) exit=(%d,%d) d=(%d,%d)",
-			       aprilPoint.x, aprilPoint.y, exitPositions[j].x, exitPositions[j].y, dx, dy);
-
-			if (ABS(dx) > kExitToleranceX || ABS(dy) > kExitToleranceY) {
-				continue;
-			}
-
-			int distanceSq = dx * dx + dy * dy;
-			if (bestDistanceSq < 0 || distanceSq < bestDistanceSq) {
-				bestDistanceSq = distanceSq;
-				exitItem = Resources::Object::cast<Resources::ItemVisual>(items[i]);
-				exitPosition = exitPositions[j];
-			}
-		}
-	}
-
-	if (!exitItem) {
-		_autoExitItem = nullptr;
-		return false;
-	}
-
-	if (exitItem == _autoExitItem) {
-		// This exit was already triggered, wait for the character to leave its hotspot
-		return false;
-	}
-
-	Gfx::RenderEntry *exitRenderEntry = exitItem->getRenderEntry(location->getScrollPosition());
-	if (!exitRenderEntry) {
-		return false;
-	}
-
-	// The hotspot lookup expects item relative coordinates
-	Common::Point exitRelativePosition = exitPosition - exitRenderEntry->getPosition();
-
-	_autoExitItem = exitItem;
-	itemDoActionAt(exitItem, Resources::PATTable::kActionExit, exitRelativePosition);
-
-	return true;
 }
 
 VisualImageXMG *GameInterface::getActionImage(uint32 itemIndex, bool active) {

@@ -323,9 +323,6 @@ void StarkEngine::updateGamepadInput() {
 		float scaling = (walkMagnitude - deadZone) / (1.f - deadZone) / walkMagnitude;
 		StarkGameInterface->directWalk(_walkAxisX * scaling, _walkAxisY * scaling);
 		StarkUserInterface->notifyGamepadWalk();
-
-		// Walking into an exit changes location without having to click it
-		StarkGameInterface->tryAutoExit();
 	} else {
 		StarkGameInterface->directWalk(0.f, 0.f);
 	}
