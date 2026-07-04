@@ -78,12 +78,12 @@ install -Dm644 "${ROOT_DIR}/dists/org.scummvm.scummvm.desktop" \
 install -Dm644 "${ROOT_DIR}/dists/android/store/scummvm_icon_512.png" \
 	"${APPDIR}/usr/share/icons/hicolor/512x512/apps/org.scummvm.scummvm.png"
 
-# Custom AppRun: switch to the data dir before launching (see AppRun.sh)
-install -Dm755 "${SCRIPT_DIR}/AppRun.sh" "${APPDIR}/AppRun"
-
 # ---------------------------------------------------------------------------
 # 4. Bundle dependencies and produce the AppImage
 # ---------------------------------------------------------------------------
+# linuxdeploy copies the custom AppRun (see AppRun.sh: it switches into the
+# bundled data dir before launching) into AppDir/AppRun itself, so it must be
+# given the source script, not a file already placed at that destination.
 OUTPUT="ScummVM-TLJ-Gamepad-${APPIMAGE_TAG}-${ARCH}.AppImage"
 export OUTPUT
 
@@ -91,7 +91,7 @@ echo ">> Building AppImage ${OUTPUT}"
 linuxdeploy \
 	--appdir "${APPDIR}" \
 	--executable "${APPDIR}/usr/bin/scummvm" \
-	--custom-apprun "${APPDIR}/AppRun" \
+	--custom-apprun "${SCRIPT_DIR}/AppRun.sh" \
 	--desktop-file "${APPDIR}/usr/share/applications/org.scummvm.scummvm.desktop" \
 	--icon-file "${APPDIR}/usr/share/icons/hicolor/512x512/apps/org.scummvm.scummvm.png" \
 	--output appimage
