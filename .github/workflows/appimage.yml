@@ -1,0 +1,76 @@
+name: AppImage
+
+# Builds a self-contained x86_64 AppImage of this gamepad/touch friendly Stark
+# (The Longest Journey) fork for handheld Linux systems (ROG Ally / Steam Deck
+# under Bazzite).
+#
+#   * Run manually from the Actions tab (workflow_dispatch) to get a build
+#     artifact attached to the run.
+#   * Push a tag like v1.0 to also publish a GitHub Release with the AppImage.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  appimage:
+    name: Build AppImage (x86_64)
+    # Older Ubuntu -> older glibc -> runs on the newer glibc of Bazzite/Fedora
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            liba52-dev libcurl4-openssl-dev libfaad-dev libflac-dev \
+            libfluidsynth-dev libfreetype6-dev libfribidi-dev libgif-dev \
+            libgtk-3-dev libjpeg-turbo8-dev libmad0-dev libmikmod-dev \
+            libmpeg2-4-dev libogg-dev libpng-dev libsdl2-dev libsdl2-net-dev \
+            libspeechd-dev libtheora-dev libvorbis-dev libvpx-dev zlib1g-dev \
+            libfuse2 wget file
+
+      - name: Build cache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: appimage-ubuntu-22.04
+          max-size: 1G
+          create-symlink: true
+
+      - name: Build the AppImage
+        env:
+          JOBS: 2
+          OUTPUT_DIR: ${{ github.workspace }}/out
+          APPIMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('git-{0}', github.sha) }}
+        run: |
+          bash dists/bazzite/build-appimage.sh
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scummvm-tlj-gamepad-appimage
+          path: out/*.AppImage
+          if-no-files-found: error
+
+      - name: Publish Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.AppImage
+          body: |
+            Gamepad + touch friendly build of ScummVM for The Longest Journey,
+            packaged as a portable x86_64 AppImage for handheld Linux
+            (ROG Ally / Steam Deck under Bazzite).
+
+            **Install:** download the `.AppImage`, `chmod +x` it, and run it.
+            You must supply your own legally owned game data files. See
+            `dists/bazzite/README.md` for the full setup and control scheme.
