@@ -148,7 +148,7 @@ void GameScreen::snapCursorToExit(GridDirection direction) {
 		return;
 	}
 
-	Common::Array<Common::Point> exitPositions = StarkGameInterface->listExitPositions();
+	Common::Array<Common::Point> exitPositions = StarkGameInterface->listExitCenters();
 	if (exitPositions.empty()) {
 		return;
 	}
@@ -192,8 +192,8 @@ void GameScreen::snapCursorToExit(GridDirection direction) {
 	Common::Point target(exitPositions[chosen].x,
 	                     exitPositions[chosen].y + Gfx::Driver::kTopBorderHeight);
 
-	// Make sure the exit indicators are visible so the player sees the target
-	_gameWindow->setDisplayExit(true);
+	// Briefly show the exit indicators so the player sees where the cursor went
+	_gameWindow->showExitsBriefly();
 
 	StarkUserInterface->warpMouseTo(target);
 }

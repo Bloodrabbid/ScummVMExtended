@@ -96,6 +96,15 @@ public:
 
 	/** List all the exit positions */
 	Common::Array<Common::Point> listExitPositions();
+
+	/**
+	 * List the center of each exit's clickable image.
+	 *
+	 * More suitable than listExitPositions for placing the cursor, since
+	 * the plain exit position is the floor hotspot which may be outside
+	 * the clickable area.
+	 */
+	Common::Array<Common::Point> listExitCenters();
 };
 
 } // End of namespace Stark

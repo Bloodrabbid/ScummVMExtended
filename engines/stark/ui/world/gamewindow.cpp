@@ -46,7 +46,8 @@ GameWindow::GameWindow(Gfx::Driver *gfx, Cursor *cursor, ActionMenu *actionMenu,
 	_actionMenu(actionMenu),
 	_inventory(inventory),
 	_objectUnderCursor(nullptr),
-	_displayExit(false) {
+	_displayExit(false),
+	_autoExitDisplayTimeRemaining(0) {
 	_position = Common::Rect(Gfx::Driver::kGameViewportWidth, Gfx::Driver::kGameViewportHeight);
 	_position.translate(0, Gfx::Driver::kTopBorderHeight);
 	_visible = true;
@@ -81,7 +82,11 @@ void GameWindow::onRender() {
 		element++;
 	}
 
-	if (_displayExit) {
+	if (_autoExitDisplayTimeRemaining > 0) {
+		_autoExitDisplayTimeRemaining -= StarkGlobal->getMillisecondsPerGameloop();
+	}
+
+	if (_displayExit || _autoExitDisplayTimeRemaining > 0) {
 		Common::Array<Common::Point> exitPositions = StarkGameInterface->listExitPositions();
 
 		for (uint i = 0; i < exitPositions.size(); ++i) {

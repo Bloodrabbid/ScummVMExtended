@@ -316,4 +316,50 @@ Common::Array<Common::Point> GameInterface::listExitPositions() {
 	return StarkGlobal->getCurrent()->getLocation()->listExitPositions();
 }
 
+Common::Array<Common::Point> GameInterface::listExitCenters() {
+	Common::Array<Common::Point> centers;
+
+	Current *current = StarkGlobal->getCurrent();
+	if (!current) {
+		return centers;
+	}
+
+	Resources::Location *location = current->getLocation();
+	if (!location) {
+		return centers;
+	}
+
+	Common::Point scroll = location->getScrollPosition();
+	Common::Array<Resources::Item *> items = location->listChildrenRecursive<Resources::Item>();
+
+	for (uint i = 0; i < items.size(); i++) {
+		if (!items[i]->isEnabled()) {
+			continue;
+		}
+
+		// Only consider items that actually expose an exit hotspot
+		Common::Array<Common::Point> exitPositions = items[i]->listExitPositions();
+		if (exitPositions.empty()) {
+			continue;
+		}
+
+		// Aim at the center of the exit's clickable image rather than the
+		// floor hotspot, which can sit outside the clickable area
+		Resources::ItemVisual *visual = Resources::Object::cast<Resources::ItemVisual>(items[i]);
+		Gfx::RenderEntry *renderEntry = visual ? visual->getRenderEntry(scroll) : nullptr;
+		VisualImageXMG *image = renderEntry ? renderEntry->getImage() : nullptr;
+
+		if (image) {
+			Common::Point center = renderEntry->getPosition();
+			center.x += image->getWidth() / 2;
+			center.y += image->getHeight() / 2;
+			centers.push_back(center);
+		} else {
+			centers.push_back(exitPositions[0]);
+		}
+	}
+
+	return centers;
+}
+
 } // End of namespace Stark

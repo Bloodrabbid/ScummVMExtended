@@ -49,8 +49,8 @@ public:
 	/** Toggle the display of exit locations */
 	void toggleExitDisplay() { _displayExit = !_displayExit; }
 
-	/** Set the display of exit locations */
-	void setDisplayExit(bool display) { _displayExit = display; }
+	/** Show the exit locations for a short while (e.g. after a gamepad snap) */
+	void showExitsBriefly() { _autoExitDisplayTimeRemaining = 2000; }
 
 protected:
 	void onMouseMove(const Common::Point &pos) override;
@@ -74,6 +74,7 @@ protected:
 	int _exitLeftBoundary, _exitRightBoundary;
 
 	bool _displayExit;
+	int32 _autoExitDisplayTimeRemaining;
 };
 
 } // End of namespace Stark
