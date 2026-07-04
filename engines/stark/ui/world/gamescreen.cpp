@@ -196,8 +196,13 @@ void GameScreen::snapCursorToExit(GridDirection direction) {
 		return;
 	}
 
-	Common::Point target(exitPositions[chosen].x,
-	                     exitPositions[chosen].y + Gfx::Driver::kTopBorderHeight);
+	// The exit position is the top left of the exit door icon. Nudge the
+	// cursor towards the center of the icon so its tip lands on it.
+	const int kExitIconCenterX = 18;
+	const int kExitIconCenterY = 20;
+
+	Common::Point target(exitPositions[chosen].x + kExitIconCenterX,
+	                     exitPositions[chosen].y + kExitIconCenterY + Gfx::Driver::kTopBorderHeight);
 
 	// Briefly show the exit indicators so the player sees where the cursor went
 	_gameWindow->showExitsBriefly();
