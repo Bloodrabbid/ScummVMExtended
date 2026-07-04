@@ -259,6 +259,11 @@ private:
 	InputDevice _lastInputDevice;
 	uint32 _lastPointerInputTime;
 
+	// Warping the system cursor makes the backend echo a mouse move event on
+	// the next frame. Remember the warp target so the echo is not mistaken
+	// for a real pointer input, which would break the gamepad input tracking.
+	Common::Point _expectedWarpEcho;
+
 	bool _shouldToggleSubtitle;
 
 	// TODO: Generalize to all screen changes

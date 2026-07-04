@@ -26,6 +26,7 @@
 #include "engines/stark/movement/directwalk.h"
 #include "engines/stark/movement/walk.h"
 
+#include "engines/stark/resources/anim.h"
 #include "engines/stark/resources/knowledgeset.h"
 #include "engines/stark/resources/level.h"
 #include "engines/stark/resources/location.h"
@@ -48,7 +49,7 @@
 
 namespace Stark {
 
-GameInterface::GameInterface() {
+GameInterface::GameInterface() : _autoExitItem(nullptr) {
 }
 
 GameInterface::~GameInterface() {
@@ -316,50 +317,102 @@ Common::Array<Common::Point> GameInterface::listExitPositions() {
 	return StarkGlobal->getCurrent()->getLocation()->listExitPositions();
 }
 
-Common::Array<Common::Point> GameInterface::listExitCenters() {
-	Common::Array<Common::Point> centers;
+bool GameInterface::tryAutoExit() {
+	if (!StarkUserInterface->isInteractive() || !StarkUserInterface->isInGameScreen()) {
+		return false;
+	}
 
 	Current *current = StarkGlobal->getCurrent();
 	if (!current) {
-		return centers;
+		return false;
 	}
 
+	Resources::ModelItem *april = current->getInteractive();
 	Resources::Location *location = current->getLocation();
-	if (!location) {
-		return centers;
+	Resources::Floor *floor = current->getFloor();
+	if (!april || !location || !floor) {
+		return false;
 	}
 
-	Common::Point scroll = location->getScrollPosition();
+	Resources::Anim *anim = april->getAnim();
+	if (!anim) {
+		return false;
+	}
+
+	// The exit triggers when the character could reach it by walking for
+	// about half a second. This scales the radius to the world's units.
+	float triggerRadius = anim->getMovementSpeed() * 0.5f;
+	if (triggerRadius <= 0.f) {
+		return false;
+	}
+
+	Math::Vector3d aprilPosition = april->getPosition3D();
+
 	Common::Array<Resources::Item *> items = location->listChildrenRecursive<Resources::Item>();
+
+	Resources::ItemVisual *exitItem = nullptr;
+	Common::Point exitPosition;
+	float bestDistance = triggerRadius;
 
 	for (uint i = 0; i < items.size(); i++) {
 		if (!items[i]->isEnabled()) {
 			continue;
 		}
 
-		// Only consider items that actually expose an exit hotspot
 		Common::Array<Common::Point> exitPositions = items[i]->listExitPositions();
-		if (exitPositions.empty()) {
-			continue;
-		}
+		for (uint j = 0; j < exitPositions.size(); j++) {
+			// Cast the exit hotspot onto the walkable floor, using the same
+			// code path as clicking it (see walkTo). This gives the position
+			// the character would walk to when using the exit.
+			Common::Point screenPos(exitPositions[j].x, exitPositions[j].y + Gfx::Driver::kTopBorderHeight);
+			Common::Point currentPos = StarkGfx->convertCoordinateOriginalToCurrent(screenPos);
 
-		// Aim at the center of the exit's clickable image rather than the
-		// floor hotspot, which can sit outside the clickable area
-		Resources::ItemVisual *visual = Resources::Object::cast<Resources::ItemVisual>(items[i]);
-		Gfx::RenderEntry *renderEntry = visual ? visual->getRenderEntry(scroll) : nullptr;
-		VisualImageXMG *image = renderEntry ? renderEntry->getImage() : nullptr;
+			Math::Ray ray = StarkScene->makeRayFromMouse(currentPos);
 
-		if (image) {
-			Common::Point center = renderEntry->getPosition();
-			center.x += image->getWidth() / 2;
-			center.y += image->getHeight() / 2;
-			centers.push_back(center);
-		} else {
-			centers.push_back(exitPositions[0]);
+			Math::Vector3d exitFloorPosition;
+			int32 faceIndex = floor->findFaceHitByRay(ray, exitFloorPosition);
+			if (faceIndex < 0) {
+				faceIndex = floor->findFaceClosestToRay(ray, exitFloorPosition);
+			}
+			if (faceIndex < 0) {
+				continue;
+			}
+
+			float distance = aprilPosition.getDistanceTo(exitFloorPosition);
+
+			debugC(3, kDebugUnknown, "tryAutoExit: exit=(%d,%d) dist=%f radius=%f",
+			       exitPositions[j].x, exitPositions[j].y, distance, triggerRadius);
+
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				exitItem = Resources::Object::cast<Resources::ItemVisual>(items[i]);
+				exitPosition = exitPositions[j];
+			}
 		}
 	}
 
-	return centers;
+	if (!exitItem) {
+		_autoExitItem = nullptr;
+		return false;
+	}
+
+	if (exitItem == _autoExitItem) {
+		// This exit was already triggered, wait for the character to move away
+		return false;
+	}
+
+	Gfx::RenderEntry *exitRenderEntry = exitItem->getRenderEntry(location->getScrollPosition());
+	if (!exitRenderEntry) {
+		return false;
+	}
+
+	// The hotspot lookup expects item relative coordinates
+	Common::Point exitRelativePosition = exitPosition - exitRenderEntry->getPosition();
+
+	_autoExitItem = exitItem;
+	itemDoActionAt(exitItem, Resources::PATTable::kActionExit, exitRelativePosition);
+
+	return true;
 }
 
 } // End of namespace Stark

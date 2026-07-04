@@ -144,6 +144,13 @@ void DialogPanel::onGameLoop() {
 
 	if (_options.empty() && StarkDialogPlayer->areOptionsAvailable()) {
 		updateDialogOptions();
+
+		// When navigating with the gamepad, bring the cursor to the initially
+		// focused option so the focus, the cursor and the click target agree
+		if (!_options.empty() && StarkUserInterface->isLastInputGamepad()) {
+			layoutOptions();
+			snapCursorToFocusedOption();
+		}
 	}
 }
 
@@ -290,6 +297,10 @@ void DialogPanel::scrollUp() {
 	}
 
 	layoutOptions();
+
+	if (StarkUserInterface->isLastInputGamepad()) {
+		snapCursorToFocusedOption();
+	}
 }
 
 void DialogPanel::scrollDown() {
@@ -307,6 +318,10 @@ void DialogPanel::scrollDown() {
 	}
 
 	layoutOptions();
+
+	if (StarkUserInterface->isLastInputGamepad()) {
+		snapCursorToFocusedOption();
+	}
 }
 
 void DialogPanel::focusNextOption() {

@@ -148,7 +148,10 @@ void GameScreen::snapCursorToExit(GridDirection direction) {
 		return;
 	}
 
-	Common::Array<Common::Point> exitPositions = StarkGameInterface->listExitCenters();
+	// The exit hotspots are where the on-screen exit arrows are drawn, and
+	// clicking one resolves to the matching exit. They are more reliable than
+	// the exit item image center, which can span the whole screen.
+	Common::Array<Common::Point> exitPositions = StarkGameInterface->listExitPositions();
 	if (exitPositions.empty()) {
 		return;
 	}

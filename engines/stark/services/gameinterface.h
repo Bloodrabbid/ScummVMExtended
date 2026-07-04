@@ -62,6 +62,17 @@ public:
 	 */
 	void directWalk(float x, float y);
 
+	/**
+	 * Trigger the exit the character is standing next to, if any.
+	 *
+	 * The exit hotspots are cast onto the walkable floor, using the same
+	 * code path as clicking them, and the resulting positions are compared
+	 * against the character's actual 3D position.
+	 *
+	 * @return true if an exit was triggered
+	 */
+	bool tryAutoExit();
+
 	VisualImageXMG *getActionImage(uint32 itemIndex, bool active);
 	VisualImageXMG *getCursorImage(uint32 itemIndex);
 
@@ -97,14 +108,10 @@ public:
 	/** List all the exit positions */
 	Common::Array<Common::Point> listExitPositions();
 
-	/**
-	 * List the center of each exit's clickable image.
-	 *
-	 * More suitable than listExitPositions for placing the cursor, since
-	 * the plain exit position is the floor hotspot which may be outside
-	 * the clickable area.
-	 */
-	Common::Array<Common::Point> listExitCenters();
+private:
+	// The exit already triggered by walking up to it, not to fire it
+	// again until the character moves away from it
+	Resources::ItemVisual *_autoExitItem;
 };
 
 } // End of namespace Stark

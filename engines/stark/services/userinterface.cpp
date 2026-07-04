@@ -82,7 +82,8 @@ UserInterface::UserInterface(StarkEngine *vm, Gfx::Driver *gfx) :
 		_gameWindowThumbnail(nullptr),
 		_modalDialog(nullptr),
 		_lastInputDevice(kInputDevicePointer),
-		_lastPointerInputTime(0) {
+		_lastPointerInputTime(0),
+		_expectedWarpEcho(-1000, -1000) {
 	_vm = vm;
 }
 
@@ -152,6 +153,14 @@ void UserInterface::onGameLoop() {
 }
 
 void UserInterface::handleMouseMove(const Common::Point &pos) {
+	if (ABS(pos.x - _expectedWarpEcho.x) <= 2 && ABS(pos.y - _expectedWarpEcho.y) <= 2) {
+		// This event is the backend echoing our own cursor warp,
+		// not an actual pointer move
+		_expectedWarpEcho = Common::Point(-1000, -1000);
+		_cursor->setMousePosition(pos);
+		return;
+	}
+
 	notifyPointerInput();
 	_cursor->setMousePosition(pos);
 }
@@ -173,6 +182,7 @@ void UserInterface::warpMouseTo(const Common::Point &posOriginal) {
 	// gamepad driven selection, but keep the cursor visible.
 	g_system->warpMouse(posCurrent.x, posCurrent.y);
 	_cursor->setMousePosition(posCurrent);
+	_expectedWarpEcho = posCurrent;
 	_lastInputDevice = kInputDeviceGamepad;
 	_lastPointerInputTime = g_system->getMillis();
 }
