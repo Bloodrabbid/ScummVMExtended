@@ -51,6 +51,9 @@ jobs:
           JOBS: 2
           OUTPUT_DIR: ${{ github.workspace }}/out
           APPIMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('git-{0}', github.sha) }}
+          # Focused The Longest Journey build: only the Stark engine. Keeps the
+          # AppImage small and avoids unrelated engines that fail release builds.
+          CONFIGURE_EXTRA: --disable-all-engines --enable-engine=stark
         run: |
           bash dists/bazzite/build-appimage.sh
 
