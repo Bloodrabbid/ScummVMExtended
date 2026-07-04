@@ -315,3 +315,6 @@ __pycache__/
 #Ignore Claude instruction files
 CLAUDE.md
 .claude
+
+# Temporary gamepad/exit diagnostics log
+debug.txt

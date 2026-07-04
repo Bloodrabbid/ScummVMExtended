@@ -163,6 +163,13 @@ void GameScreen::snapCursorToExit(GridDirection direction) {
 	int dirX = (direction == kGridDirectionRight) - (direction == kGridDirectionLeft);
 	int dirY = (direction == kGridDirectionDown) - (direction == kGridDirectionUp);
 
+	// The exit position is the top left of the exit door icon. The cursor is
+	// snapped to the icon center, so compare against the same point, otherwise
+	// the exit the cursor already sits on registers as being in the direction
+	// away from the offset and steals the input.
+	const int kExitIconCenterX = 15;
+	const int kExitIconCenterY = 15;
+
 	// Pick the exit that lies in the pressed direction from the cursor,
 	// preferring the closest and best aligned. Diagonal exits still count.
 	// If there is no exit in that direction, the cursor stays put.
@@ -170,7 +177,8 @@ void GameScreen::snapCursorToExit(GridDirection direction) {
 	int bestScore = 0;
 
 	for (uint i = 0; i < exitPositions.size(); i++) {
-		Common::Point exitPoint(exitPositions[i].x, exitPositions[i].y + Gfx::Driver::kTopBorderHeight);
+		Common::Point exitPoint(exitPositions[i].x + kExitIconCenterX,
+		                        exitPositions[i].y + kExitIconCenterY + Gfx::Driver::kTopBorderHeight);
 
 		int dx = exitPoint.x - cursor.x;
 		int dy = exitPoint.y - cursor.y;
@@ -195,11 +203,6 @@ void GameScreen::snapCursorToExit(GridDirection direction) {
 	if (chosen < 0) {
 		return;
 	}
-
-	// The exit position is the top left of the exit door icon. Nudge the
-	// cursor towards the center of the icon so its tip lands on it.
-	const int kExitIconCenterX = 18;
-	const int kExitIconCenterY = 20;
 
 	Common::Point target(exitPositions[chosen].x + kExitIconCenterX,
 	                     exitPositions[chosen].y + kExitIconCenterY + Gfx::Driver::kTopBorderHeight);
