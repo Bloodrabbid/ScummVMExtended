@@ -86,15 +86,22 @@ void DialogPanel::clearOptions() {
 	_options.clear();
 }
 
-void DialogPanel::renderOptions() {
+void DialogPanel::layoutOptions() {
 	uint32 pos = _optionsTop;
 	for (uint i = _firstVisibleOption; i <= _lastVisibleOption; ++i) {
 		_options[i]->setPosition(Common::Point(_optionsLeft, pos));
+		pos += _options[i]->getHeight();
+	}
+}
+
+void DialogPanel::renderOptions() {
+	layoutOptions();
+
+	for (uint i = _firstVisibleOption; i <= _lastVisibleOption; ++i) {
+		Common::Point pos = _options[i]->getPosition();
 		_options[i]->render();
 
-		_dialogOptionBullet->render(Common::Point(_optionsLeft - 13, pos + 3), false);
-
-		pos += _options[i]->getHeight();
+		_dialogOptionBullet->render(Common::Point(pos.x - 13, pos.y + 3), false);
 	}
 
 	_scrollUpArrowVisible = _firstVisibleOption > 0;
@@ -292,6 +299,10 @@ void DialogPanel::focusNextOption() {
 		_lastVisibleOption = _focusedOption;
 		updateFirstVisibleOption();
 	}
+
+	// Reposition the options right away so the cursor can be snapped
+	// to the focused one before the next render
+	layoutOptions();
 }
 
 void DialogPanel::focusPrevOption() {
@@ -305,6 +316,8 @@ void DialogPanel::focusPrevOption() {
 		_firstVisibleOption = _focusedOption;
 		updateLastVisibleOption();
 	}
+
+	layoutOptions();
 }
 
 Common::Point DialogPanel::getFocusedOptionCenter() const {

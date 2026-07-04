@@ -84,6 +84,7 @@ private:
 	void clearSubtitleVisual();
 	void updateDialogOptions();
 	void clearOptions();
+	void layoutOptions();
 	void renderOptions();
 	void renderScrollArrows() const;
 

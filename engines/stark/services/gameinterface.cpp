@@ -37,6 +37,8 @@
 #include "engines/stark/services/global.h"
 #include "engines/stark/services/services.h"
 
+#include "engines/stark/gfx/driver.h"
+
 #include "engines/stark/visual/image.h"
 
 #include "engines/stark/scene.h"
@@ -44,7 +46,7 @@
 
 namespace Stark {
 
-GameInterface::GameInterface() {
+GameInterface::GameInterface() : _autoExitItem(nullptr) {
 }
 
 GameInterface::~GameInterface() {
@@ -143,6 +145,64 @@ void GameInterface::directWalk(float x, float y) {
 		// The movement stops itself on the next game loop when the vector is null
 		directWalk->setInputVector(x, y);
 	}
+}
+
+bool GameInterface::tryAutoExit() {
+	if (!StarkUserInterface->isInteractive() || !StarkUserInterface->isInGameScreen()) {
+		return false;
+	}
+
+	Current *current = StarkGlobal->getCurrent();
+	if (!current) {
+		return false;
+	}
+
+	Resources::ModelItem *april = current->getInteractive();
+	Resources::Location *location = current->getLocation();
+	if (!april || !location) {
+		return false;
+	}
+
+	// Project the character position to the game window, like the mouse hit tests expect
+	Common::Point screenPos = StarkScene->convertPosition3DToGameScreenOriginal(april->getPosition3D());
+	Common::Point windowPos(screenPos.x, screenPos.y - Gfx::Driver::kTopBorderHeight);
+
+	// Look for an exit hotspot under the character's feet
+	Gfx::RenderEntryArray renderEntries = location->listRenderEntries();
+	Resources::ItemVisual *exitItem = nullptr;
+	Common::Point exitRelativePosition;
+	for (int i = renderEntries.size() - 1; i >= 0; i--) {
+		Resources::ItemVisual *item = renderEntries[i]->getOwner();
+		if (!item || item == april) {
+			continue;
+		}
+
+		Common::Point relativePosition;
+		if (!renderEntries[i]->containsPoint(windowPos, relativePosition, Common::Rect())) {
+			continue;
+		}
+
+		if (itemGetDefaultActionAt(item, relativePosition) == Resources::PATTable::kActionExit) {
+			exitItem = item;
+			exitRelativePosition = relativePosition;
+			break;
+		}
+	}
+
+	if (!exitItem) {
+		_autoExitItem = nullptr;
+		return false;
+	}
+
+	if (exitItem == _autoExitItem) {
+		// This exit was already triggered, wait for the character to leave its hotspot
+		return false;
+	}
+
+	_autoExitItem = exitItem;
+	itemDoActionAt(exitItem, Resources::PATTable::kActionExit, exitRelativePosition);
+
+	return true;
 }
 
 VisualImageXMG *GameInterface::getActionImage(uint32 itemIndex, bool active) {

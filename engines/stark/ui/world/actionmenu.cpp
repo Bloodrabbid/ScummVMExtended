@@ -32,6 +32,7 @@
 #include "engines/stark/resources/sound.h"
 #include "engines/stark/services/services.h"
 #include "engines/stark/services/gameinterface.h"
+#include "engines/stark/services/userinterface.h"
 #include "engines/stark/services/staticprovider.h"
 #include "engines/stark/services/global.h"
 #include "engines/stark/scene.h"
@@ -202,6 +203,47 @@ void ActionMenu::onMouseMove(const Common::Point &pos) {
 	}
 
 	_autoCloseTimeRemaining = kAutoCloseSuspended;
+}
+
+void ActionMenu::navigateGrid(GridDirection direction) {
+	// The buttons are laid out on a diagonal, from the top right (hand)
+	// through the middle (mouth) to the bottom left (eye)
+	static const int32 visualOrder[] = { kActionHand, kActionMouth, kActionEye };
+
+	// Locate the button currently under the cursor in the visual order
+	Common::Point mousePos = getRelativeMousePosition();
+	int32 currentOrderIndex = -1;
+	for (uint i = 0; i < ARRAYSIZE(visualOrder); i++) {
+		const ActionButton &button = _buttons[visualOrder[i]];
+		if (button.enabled && button.rect.contains(mousePos)) {
+			currentOrderIndex = i;
+			break;
+		}
+	}
+
+	// Cycle through the enabled buttons, towards the eye when moving
+	// down or left, towards the hand when moving up or right
+	int32 step = (direction == kGridDirectionDown || direction == kGridDirectionLeft) ? 1 : -1;
+
+	int32 target = -1;
+	for (uint attempt = 1; attempt <= ARRAYSIZE(visualOrder); attempt++) {
+		int32 candidate = currentOrderIndex + step * attempt;
+		candidate = (candidate + ARRAYSIZE(visualOrder) * attempt) % ARRAYSIZE(visualOrder);
+		if (_buttons[visualOrder[candidate]].enabled) {
+			target = visualOrder[candidate];
+			break;
+		}
+	}
+
+	if (target < 0) {
+		return;
+	}
+
+	const Common::Rect &rect = _buttons[target].rect;
+	Common::Point center(_position.left + (rect.left + rect.right) / 2,
+	                     _position.top + (rect.top + rect.bottom) / 2);
+
+	StarkUserInterface->warpMouseTo(center);
 }
 
 void ActionMenu::onClick(const Common::Point &pos) {

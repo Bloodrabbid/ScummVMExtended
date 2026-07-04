@@ -120,7 +120,9 @@ void GameScreen::handleDoubleClick() {
 }
 
 void GameScreen::handleGridNavigation(GridDirection direction) {
-	if (_inventoryWindow->isVisible()) {
+	if (_actionMenu->isVisible()) {
+		_actionMenu->navigateGrid(direction);
+	} else if (_inventoryWindow->isVisible()) {
 		_inventoryWindow->navigateGrid(direction);
 	} else if (_dialogPanel->hasOptions()) {
 		if (direction == kGridDirectionUp) {

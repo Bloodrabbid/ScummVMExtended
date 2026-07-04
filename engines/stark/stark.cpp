@@ -243,24 +243,28 @@ void StarkEngine::handleJoystickAxis(byte axis, int16 position) {
 	// always positive, the direction is identified by the axis. When a full
 	// axis crosses zero both of its half axes fire a zero position event,
 	// so ignore resets coming from the opposite half axis.
-	float value = position / (float)Common::JOYAXIS_MAX;
+	//
+	// Compute the values in 32 bits: at full deflection SDL reports -32768,
+	// whose absolute value overflows int16 and would flip the direction.
+	float magnitude = MIN(ABS<int32>(position), (int32)Common::JOYAXIS_MAX) / (float)Common::JOYAXIS_MAX;
+	float value = CLIP(position / (float)Common::JOYAXIS_MAX, -1.f, 1.f);
 
 	switch (axis) {
 	case kStarkAxisWalkUp:
 		if (position != 0 || _walkAxisY <= 0.f)
-			_walkAxisY = -value;
+			_walkAxisY = -magnitude;
 		break;
 	case kStarkAxisWalkDown:
 		if (position != 0 || _walkAxisY >= 0.f)
-			_walkAxisY = value;
+			_walkAxisY = magnitude;
 		break;
 	case kStarkAxisWalkLeft:
 		if (position != 0 || _walkAxisX >= 0.f)
-			_walkAxisX = -value;
+			_walkAxisX = -magnitude;
 		break;
 	case kStarkAxisWalkRight:
 		if (position != 0 || _walkAxisX <= 0.f)
-			_walkAxisX = value;
+			_walkAxisX = magnitude;
 		break;
 	case Common::JOYSTICK_AXIS_RIGHT_STICK_X:
 		_cursorAxisX = value;
@@ -319,6 +323,9 @@ void StarkEngine::updateGamepadInput() {
 		float scaling = (walkMagnitude - deadZone) / (1.f - deadZone) / walkMagnitude;
 		StarkGameInterface->directWalk(_walkAxisX * scaling, _walkAxisY * scaling);
 		StarkUserInterface->notifyGamepadWalk();
+
+		// Walking into an exit changes location without having to click it
+		StarkGameInterface->tryAutoExit();
 	} else {
 		StarkGameInterface->directWalk(0.f, 0.f);
 	}

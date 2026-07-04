@@ -49,6 +49,9 @@ public:
 
 	void onScreenChanged();
 
+	/** Snap the cursor to the next enabled action button */
+	void navigateGrid(GridDirection direction);
+
 protected:
 	Common::Rect computePosition(const Common::Point &mouse) const;
 
