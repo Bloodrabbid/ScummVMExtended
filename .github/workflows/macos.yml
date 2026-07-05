@@ -53,9 +53,11 @@ jobs:
       - name: Assemble .app bundle
         run: |
           # bundle-pack copies the resources and expects a "scummvm-static"
-          # binary; feed it the dynamic one, then bundle the dylibs so the
-          # .app runs on machines without Homebrew.
+          # binary; feed it the dynamic one. It also copies the dock tile
+          # plugin, so build that first. Then bundle the dylibs so the .app
+          # runs on machines without Homebrew.
           cp scummvm scummvm-static
+          make scummvm.docktileplugin
           make bundle-pack
           dylibbundler --overwrite-dir --bundle-deps --create-dir \
             --fix-file ScummVM.app/Contents/MacOS/scummvm \
