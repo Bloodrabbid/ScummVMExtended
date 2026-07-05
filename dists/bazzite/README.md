@@ -41,6 +41,26 @@ Stark (*The Longest Journey* / «Бесконечное путешествие»
    правому стику режим **Joystick Move → As-is** (не Mouse), либо **отключи
    Steam Input** для этого ярлыка, тогда ScummVM читает контроллер сам.
 
+## Подменить оригинал из Steam своим билдом
+
+Steam-версия *The Longest Journey* сама работает на ScummVM, поэтому можно
+оставить запись игры (обложку, слот в библиотеке) и заставить её кнопку **Play**
+запускать этот билд с твоими данными.
+
+1. Один раз в Desktop Mode добавь свою игру в AppImage (**Add Game…**) и запомни
+   **ID цели** в её свойствах, например `tlj-win-ru`. Конфиг хранится в
+   `~/.config/scummvm/`, так что добавлять нужно только раз.
+2. Steam → **The Longest Journey** → **Properties → Launch Options**:
+   ```
+   bash -c 'exec "/home/<user>/Applications/ScummVM-TLJ-Gamepad-v0.1-x86_64.AppImage" tlj-win-ru'
+   ```
+   Замени `<user>`, путь к AppImage и `tlj-win-ru` на свои. `exec` запускает твой
+   билд, а дописываемый Steam-ом `%command%` игнорируется.
+3. Если в Gaming Mode не стартует из-за FUSE — добавь флаг:
+   `…AppImage --appimage-extract-and-run tlj-win-ru`.
+
+Теперь **Play** у TLJ в Steam запускает этот геймпадный билд с твоими данными.
+
 ## Схема управления
 
 | Вход | Действие |
