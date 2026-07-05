@@ -27,9 +27,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install a52dec faad2 flac fluid-synth freetype fribidi giflib \
-            jpeg mad libmikmod libmpeg2 libogg libpng libvorbis libvpx \
-            sdl2 sdl2_net theora
+          # Minimal set for the Stark engine, plus dylibbundler to make the
+          # .app self-contained. Optional codecs are left out so fewer dylibs
+          # need bundling.
+          brew install dylibbundler freetype fribidi jpeg-turbo \
+            libogg libpng libvorbis flac sdl2 sdl2_net
 
       - name: Build cache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -40,13 +42,25 @@ jobs:
 
       - name: Configure and build
         run: |
+          # No --enable-release: that forces a static link (scummvm-static)
+          # against .a libs Homebrew does not ship. Build dynamically instead.
           ./configure \
-            --enable-release \
             --disable-debug \
             --disable-all-engines \
             --enable-engine=stark
           make -j3
-          make bundle
+
+      - name: Assemble .app bundle
+        run: |
+          # bundle-pack copies the resources and expects a "scummvm-static"
+          # binary; feed it the dynamic one, then bundle the dylibs so the
+          # .app runs on machines without Homebrew.
+          cp scummvm scummvm-static
+          make bundle-pack
+          dylibbundler --overwrite-dir --bundle-deps --create-dir \
+            --fix-file ScummVM.app/Contents/MacOS/scummvm \
+            --dest-dir ScummVM.app/Contents/libs \
+            --install-path @executable_path/../libs/
 
       - name: Package
         run: |
