@@ -1,0 +1,110 @@
+name: Windows
+
+# Builds a portable Windows x64 zip (scummvm.exe + data + DLLs) of the
+# gamepad/touch friendly Stark (The Longest Journey) fork, using MSYS2/MinGW.
+#
+#   * Run manually from the Actions tab (workflow_dispatch) for a build artifact.
+#   * Push a tag like v1.0 to also attach the zip to the GitHub Release.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Build Windows zip (x64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    env:
+      TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('git-{0}', github.sha) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            make pkgconf
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_net
+            mingw-w64-x86_64-freetype
+            mingw-w64-x86_64-libpng
+            mingw-w64-x86_64-libjpeg-turbo
+            mingw-w64-x86_64-libogg
+            mingw-w64-x86_64-libvorbis
+            mingw-w64-x86_64-flac
+            mingw-w64-x86_64-faad2
+            mingw-w64-x86_64-fribidi
+            mingw-w64-x86_64-a52dec
+            mingw-w64-x86_64-libmad
+            mingw-w64-x86_64-libmpeg2
+            mingw-w64-x86_64-libtheora
+            mingw-w64-x86_64-zlib
+
+      - name: Configure and build
+        run: |
+          ./configure \
+            --enable-release \
+            --disable-debug \
+            --disable-all-engines \
+            --enable-engine=stark
+          make -j3
+
+      - name: Assemble distribution
+        run: |
+          set -e
+          mkdir -p dist
+          cp scummvm.exe dist/
+          # Runtime data files ScummVM looks for next to the executable
+          cp gui/themes/*.zip gui/themes/*.dat dist/ 2>/dev/null || true
+          cp dists/engine-data/*.dat dists/engine-data/*.zip dist/ 2>/dev/null || true
+          cp dists/networking/wwwroot.zip dist/ 2>/dev/null || true
+          # Recursively collect the MinGW DLLs the binaries depend on
+          collect() {
+            local changed=1
+            while [ "$changed" = 1 ]; do
+              changed=0
+              for bin in dist/*.exe dist/*.dll; do
+                [ -e "$bin" ] || continue
+                while read -r name; do
+                  if [ -n "$name" ] && [ -e "$MINGW_PREFIX/bin/$name" ] && [ ! -e "dist/$name" ]; then
+                    cp "$MINGW_PREFIX/bin/$name" dist/
+                    changed=1
+                  fi
+                done < <(ldd "$bin" 2>/dev/null | awk '/\/mingw64\// {print $1}')
+              done
+            done
+          }
+          collect
+          ls -lh dist
+
+      - name: Zip
+        run: |
+          mkdir -p out
+          ZIP="ScummVM-TLJ-Gamepad-${TAG}-Windows-x64.zip"
+          cd dist && zip -r "../out/${ZIP}" . && cd ..
+          ls -lh out
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scummvm-tlj-gamepad-windows
+          path: out/*.zip
+          if-no-files-found: error
+
+      - name: Publish Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.zip

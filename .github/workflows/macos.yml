@@ -1,0 +1,70 @@
+name: macOS
+
+# Builds a macOS (Apple Silicon) .app bundle of the gamepad/touch friendly
+# Stark (The Longest Journey) fork.
+#
+#   * Run manually from the Actions tab (workflow_dispatch) for a build artifact.
+#   * Push a tag like v1.0 to also attach the zip to the GitHub Release.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: Build macOS app (arm64)
+    runs-on: macos-latest
+    env:
+      TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('git-{0}', github.sha) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install a52dec faad2 flac fluid-synth freetype fribidi giflib \
+            jpeg mad libmikmod libmpeg2 libogg libpng libvorbis libvpx \
+            sdl2 sdl2_net theora
+
+      - name: Build cache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: macos-arm64
+          max-size: 1G
+          create-symlink: true
+
+      - name: Configure and build
+        run: |
+          ./configure \
+            --enable-release \
+            --disable-debug \
+            --disable-all-engines \
+            --enable-engine=stark
+          make -j3
+          make bundle
+
+      - name: Package
+        run: |
+          mkdir -p out
+          ZIP="ScummVM-TLJ-Gamepad-${TAG}-macOS-arm64.zip"
+          # ditto preserves the bundle's structure and resource forks
+          ditto -c -k --sequesterRsrc --keepParent ScummVM.app "out/${ZIP}"
+          ls -lh out
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scummvm-tlj-gamepad-macos
+          path: out/*.zip
+          if-no-files-found: error
+
+      - name: Publish Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.zip
