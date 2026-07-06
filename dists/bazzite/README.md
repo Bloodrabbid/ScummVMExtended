@@ -52,12 +52,18 @@ Steam-версия *The Longest Journey* сама работает на ScummVM,
    `~/.config/scummvm/`, так что добавлять нужно только раз.
 2. Steam → **The Longest Journey** → **Properties → Launch Options**:
    ```
-   bash -c 'exec "/home/<user>/Applications/ScummVM-TLJ-Gamepad-v0.1-x86_64.AppImage" tlj-win-ru'
+   bash -c 'exec "/home/<user>/Applications/ScummVM-TLJ-Gamepad-v0.2-x86_64.AppImage" tlj-win-ru' %command%
    ```
-   Замени `<user>`, путь к AppImage и `tlj-win-ru` на свои. `exec` запускает твой
-   билд, а дописываемый Steam-ом `%command%` игнорируется.
-3. Если в Gaming Mode не стартует из-за FUSE — добавь флаг:
-   `…AppImage --appimage-extract-and-run tlj-win-ru`.
+   Замени `<user>`, путь к AppImage и `tlj-win-ru` на свои. **`%command%` в конце
+   обязателен**: для игр через Proton Steam игнорирует Launch Options без него и
+   запускает оригинальный exe. `%command%` подставляется как аргументы в конец
+   `bash -c`, а `exec` заменяет процесс твоим билдом, до оригинального exe дело не
+   доходит.
+3. Если в Gaming Mode не стартует из-за FUSE — добавь флаг перед ID:
+   `… -x86_64.AppImage --appimage-extract-and-run tlj-win-ru' %command%`.
+
+> Проще и надёжнее: добавить AppImage как **отдельную Non-Steam игру** — тогда
+> оригинальную запись TLJ трогать не нужно вовсе.
 
 Теперь **Play** у TLJ в Steam запускает этот геймпадный билд с твоими данными.
 
