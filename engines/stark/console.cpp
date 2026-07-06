@@ -21,6 +21,7 @@
 
 #include "engines/stark/console.h"
 
+#include "engines/stark/formats/tm.h"
 #include "engines/stark/formats/xarc.h"
 #include "engines/stark/formats/xmg.h"
 #include "engines/stark/resources/object.h"
@@ -42,7 +43,9 @@
 #include "engines/stark/services/staticprovider.h"
 #include "engines/stark/tools/decompiler.h"
 
+#include "common/config-manager.h"
 #include "common/file.h"
+#include "common/fs.h"
 
 #include "graphics/surface.h"
 
@@ -76,6 +79,7 @@ Console::Console() :
 	registerCmd("enableInventoryItem",  WRAP_METHOD(Console, Cmd_EnableInventoryItem));
 	registerCmd("extractAllTextures",   WRAP_METHOD(Console, Cmd_ExtractAllTextures));
 	registerCmd("dumpAllImages",        WRAP_METHOD(Console, Cmd_DumpAllImages));
+	registerCmd("dumpAllTextures",      WRAP_METHOD(Console, Cmd_DumpAllTextures));
 }
 
 Console::~Console() {
@@ -572,6 +576,27 @@ int Console::dumpArchiveXMGs(const Common::Path &archiveName) {
 	return dumped;
 }
 
+static void listXarcsRecursive(const Common::FSNode &node, const Common::Path &relativePath, Common::Array<Common::Path> &archives) {
+	Common::FSList children;
+	if (!node.getChildren(children, Common::FSNode::kListAll)) {
+		return;
+	}
+
+	for (uint i = 0; i < children.size(); i++) {
+		const Common::String name = children[i].getName();
+
+		if (children[i].isDirectory()) {
+			// Don't scan the replacement assets, they don't contain archives
+			if (relativePath.empty() && name.equalsIgnoreCase("mods")) {
+				continue;
+			}
+			listXarcsRecursive(children[i], relativePath.appendComponent(name), archives);
+		} else if (name.hasSuffixIgnoreCase(".xarc")) {
+			archives.push_back(relativePath.appendComponent(name));
+		}
+	}
+}
+
 bool Console::Cmd_DumpAllImages(int argc, const char **argv) {
 	if (argc != 1) {
 		debugPrintf("Decode all the XMG images from all the game archives to PNG files\n");
@@ -582,54 +607,106 @@ bool Console::Cmd_DumpAllImages(int argc, const char **argv) {
 		return true;
 	}
 
-	int count = dumpArchiveXMGs("static/static.xarc");
+	const Common::FSNode gameDataDir(ConfMan.getPath("path"));
 
-	// Walk all the level and location archives. This mirrors walkAllArchives,
-	// but is a separate loop since we need the archive names, which the
-	// visitors do not receive.
-	ArchiveLoader *archiveLoader = new ArchiveLoader();
+	Common::Array<Common::Path> archives;
+	listXarcsRecursive(gameDataDir, Common::Path(), archives);
 
-	// Temporarily replace the global archive loader with our instance
-	ArchiveLoader *gameArchiveLoader = StarkArchiveLoader;
-	StarkArchiveLoader = archiveLoader;
-
-	archiveLoader->load("x.xarc");
-	Resources::Root *root = archiveLoader->useRoot<Resources::Root>("x.xarc");
-
-	// Find all the levels
-	Common::Array<Resources::Level *> levels = root->listChildren<Resources::Level>();
-
-	// Loop over the levels
-	for (uint i = 0; i < levels.size(); i++) {
-		Resources::Level *level = levels[i];
-
-		Common::Path levelArchive = archiveLoader->buildArchiveName(level);
-		count += dumpArchiveXMGs(levelArchive);
-
-		// Load the detailed level archive to be able to list the locations
-		archiveLoader->load(levelArchive);
-		level = archiveLoader->useRoot<Resources::Level>(levelArchive);
-
-		Common::Array<Resources::Location *> locations = level->listChildren<Resources::Location>();
-
-		// Loop over the locations
-		for (uint j = 0; j < locations.size(); j++) {
-			Resources::Location *location = locations[j];
-
-			Common::Path locationArchive = archiveLoader->buildArchiveName(level, location);
-			count += dumpArchiveXMGs(locationArchive);
-		}
-
-		archiveLoader->returnRoot(levelArchive);
-		archiveLoader->unloadUnused();
+	int count = 0;
+	for (uint i = 0; i < archives.size(); i++) {
+		count += dumpArchiveXMGs(archives[i]);
 	}
 
-	// Restore the global archive loader
-	StarkArchiveLoader = gameArchiveLoader;
+	debugPrintf("Dumped %d images from %d archives\n", count, archives.size());
 
-	delete archiveLoader;
+	return true;
+}
 
-	debugPrintf("Dumped %d images\n", count);
+int Console::dumpArchiveTMs(const Common::Path &archiveName) {
+	Formats::XARCArchive xarc;
+	if (!xarc.open(archiveName)) {
+		debugPrintf("Can't open archive with name '%s'\n", archiveName.toString().c_str());
+		return 0;
+	}
+
+	// Texture set overrides are zips looked up at '<archive dir>/xarc/<name>.tm.zip',
+	// dump each set to a matching '<archive dir>/xarc/<name>.tm' folder
+	Common::Path dumpDir("dump");
+	dumpDir.joinInPlace(archiveName.getParent());
+	dumpDir.joinInPlace("xarc");
+
+	Common::ArchiveMemberList members;
+	xarc.listMatchingMembers(members, "*.tm");
+
+	int dumped = 0;
+	for (Common::ArchiveMemberList::const_iterator it = members.begin(); it != members.end(); it++) {
+		Common::Path setDir = dumpDir.appendComponent(it->get()->getName());
+
+		ArchiveReadStream *stream = new ArchiveReadStream(it->get()->createReadStream());
+		Formats::BiffArchive *archive = Formats::TextureSetReader::readArchive(stream);
+		delete stream;
+
+		if (!archive) {
+			debugPrintf("Failed to read texture set '%s' from archive '%s'\n",
+			            it->get()->getName().c_str(), archiveName.toString().c_str());
+			continue;
+		}
+
+		Common::Array<Formats::Texture *> textures = archive->listObjectsRecursive<Formats::Texture>();
+		for (uint i = 0; i < textures.size(); i++) {
+			Common::String textureName = textures[i]->getName();
+			if (textureName.contains('.')) {
+				textureName = Common::String(textureName.c_str(), textureName.rfind('.'));
+			}
+
+			Common::Path filePath = setDir.appendComponent(textureName + ".png");
+			if (Common::File::exists(filePath)) {
+				continue;
+			}
+
+			Common::DumpFile out;
+			if (!out.open(filePath, true)) {
+				debugPrintf("Unable to open file '%s' for writing\n", filePath.toString().c_str());
+				continue;
+			}
+
+			Graphics::Surface *surface = textures[i]->getSurface();
+			Image::writePNG(out, *surface);
+			out.close();
+
+			surface->free();
+			delete surface;
+			dumped++;
+		}
+
+		delete archive;
+	}
+
+	return dumped;
+}
+
+bool Console::Cmd_DumpAllTextures(int argc, const char **argv) {
+	if (argc != 1) {
+		debugPrintf("Decode all the 3d model textures from all the game archives to PNG files\n");
+		debugPrintf("The destination folder, named 'dump', is in the location ScummVM was launched from.\n");
+		debugPrintf("Each texture set is dumped next to the archive it comes from, so same-named\n");
+		debugPrintf("sets with different content are kept apart, unlike with extractAllTextures.\n");
+		debugPrintf("Usage :\n");
+		debugPrintf("dumpAllTextures\n");
+		return true;
+	}
+
+	const Common::FSNode gameDataDir(ConfMan.getPath("path"));
+
+	Common::Array<Common::Path> archives;
+	listXarcsRecursive(gameDataDir, Common::Path(), archives);
+
+	int count = 0;
+	for (uint i = 0; i < archives.size(); i++) {
+		count += dumpArchiveTMs(archives[i]);
+	}
+
+	debugPrintf("Dumped %d textures from %d archives\n", count, archives.size());
 
 	return true;
 }

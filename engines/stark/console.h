@@ -66,12 +66,14 @@ private:
 	bool Cmd_ChangeKnowledge(int argc, const char **argv);
 	bool Cmd_ExtractAllTextures(int argc, const char **argv);
 	bool Cmd_DumpAllImages(int argc, const char **argv);
+	bool Cmd_DumpAllTextures(int argc, const char **argv);
 
 	Common::Array<Resources::Anim *> listAllLocationAnimations() const;
 	Common::Array<Resources::Script *> listAllLocationScripts() const;
 
 	void walkAllArchives(ArchiveVisitor *visitor);
 	int dumpArchiveXMGs(const Common::Path &archiveName);
+	int dumpArchiveTMs(const Common::Path &archiveName);
 };
 
 } // End of namespace Stark

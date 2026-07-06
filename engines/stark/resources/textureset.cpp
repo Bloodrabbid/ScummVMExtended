@@ -119,9 +119,18 @@ void TextureSet::extractArchive() {
 Gfx::TextureSet *TextureSet::readOverrideDdsArchive() {
 	Common::Path archiveName = _filename.append(".zip");
 
-	debugC(kDebugModding, "Attempting to load %s", archiveName.toString().c_str());
+	// Prefer a location-scoped override next to the archive the texture set comes
+	// from, so that same-named sets with different content can be replaced separately
+	Common::Path scopedArchiveName = StarkArchiveLoader->getExternalFilePath(archiveName, _archiveName);
 
-	Common::Archive *archive = Common::makeZipArchive(archiveName);
+	debugC(kDebugModding, "Attempting to load %s", scopedArchiveName.toString().c_str());
+
+	Common::Archive *archive = Common::makeZipArchive(scopedArchiveName);
+	if (!archive) {
+		debugC(kDebugModding, "Attempting to load %s", archiveName.toString().c_str());
+
+		archive = Common::makeZipArchive(archiveName);
+	}
 	if (!archive) {
 		return nullptr;
 	}
