@@ -22,6 +22,8 @@
 #ifndef CONSOLE_H_
 #define CONSOLE_H_
 
+#include "common/path.h"
+
 #include "gui/debugger.h"
 
 namespace Stark {
@@ -63,11 +65,13 @@ private:
 	bool Cmd_ChangeChapter(int argc, const char **argv);
 	bool Cmd_ChangeKnowledge(int argc, const char **argv);
 	bool Cmd_ExtractAllTextures(int argc, const char **argv);
+	bool Cmd_DumpAllImages(int argc, const char **argv);
 
 	Common::Array<Resources::Anim *> listAllLocationAnimations() const;
 	Common::Array<Resources::Script *> listAllLocationScripts() const;
 
 	void walkAllArchives(ArchiveVisitor *visitor);
+	int dumpArchiveXMGs(const Common::Path &archiveName);
 };
 
 } // End of namespace Stark

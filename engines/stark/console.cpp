@@ -22,6 +22,7 @@
 #include "engines/stark/console.h"
 
 #include "engines/stark/formats/xarc.h"
+#include "engines/stark/formats/xmg.h"
 #include "engines/stark/resources/object.h"
 #include "engines/stark/resources/anim.h"
 #include "engines/stark/resources/level.h"
@@ -42,6 +43,10 @@
 #include "engines/stark/tools/decompiler.h"
 
 #include "common/file.h"
+
+#include "graphics/surface.h"
+
+#include "image/png.h"
 
 namespace Stark {
 
@@ -70,6 +75,7 @@ Console::Console() :
 	registerCmd("changeKnowledge",      WRAP_METHOD(Console, Cmd_ChangeKnowledge));
 	registerCmd("enableInventoryItem",  WRAP_METHOD(Console, Cmd_EnableInventoryItem));
 	registerCmd("extractAllTextures",   WRAP_METHOD(Console, Cmd_ExtractAllTextures));
+	registerCmd("dumpAllImages",        WRAP_METHOD(Console, Cmd_DumpAllImages));
 }
 
 Console::~Console() {
@@ -503,6 +509,127 @@ private:
 bool Console::Cmd_ExtractAllTextures(int argc, const char **argv) {
 	TextureExtractingArchiveVisitor visitor;
 	walkAllArchives(&visitor);
+
+	return true;
+}
+
+int Console::dumpArchiveXMGs(const Common::Path &archiveName) {
+	Formats::XARCArchive xarc;
+	if (!xarc.open(archiveName)) {
+		debugPrintf("Can't open archive with name '%s'\n", archiveName.toString().c_str());
+		return 0;
+	}
+
+	// Replacement assets are loaded from '<archive dir>/xarc/<name>.png',
+	// mirror that layout in the dump so it maps 1:1 onto a mod directory
+	Common::Path dumpDir("dump");
+	dumpDir.joinInPlace(archiveName.getParent());
+	dumpDir.joinInPlace("xarc");
+
+	Common::ArchiveMemberList members;
+	xarc.listMatchingMembers(members, "*.xmg");
+
+	int dumped = 0;
+	for (Common::ArchiveMemberList::const_iterator it = members.begin(); it != members.end(); it++) {
+		Common::String fileName = it->get()->getName();
+		if (fileName.hasSuffixIgnoreCase(".xmg")) {
+			fileName = Common::String(fileName.c_str(), fileName.size() - 4);
+		}
+		fileName += ".png";
+
+		Common::Path filePath = dumpDir.appendComponent(fileName);
+		if (Common::File::exists(filePath)) {
+			continue;
+		}
+
+		Common::SeekableReadStream *inStream = it->get()->createReadStream();
+		Graphics::Surface *surface = Formats::XMGDecoder::decode(inStream);
+		delete inStream;
+
+		if (!surface) {
+			debugPrintf("Failed to decode image '%s' from archive '%s'\n",
+			            it->get()->getName().c_str(), archiveName.toString().c_str());
+			continue;
+		}
+
+		Common::DumpFile out;
+		if (!out.open(filePath, true)) {
+			debugPrintf("Unable to open file '%s' for writing\n", filePath.toString().c_str());
+		} else {
+			Image::writePNG(out, *surface);
+			out.close();
+			dumped++;
+		}
+
+		surface->free();
+		delete surface;
+	}
+
+	if (dumped > 0) {
+		debug("%s: dumped %d images", archiveName.toString(Common::Path::kNativeSeparator).c_str(), dumped);
+	}
+
+	return dumped;
+}
+
+bool Console::Cmd_DumpAllImages(int argc, const char **argv) {
+	if (argc != 1) {
+		debugPrintf("Decode all the XMG images from all the game archives to PNG files\n");
+		debugPrintf("The destination folder, named 'dump', is in the location ScummVM was launched from.\n");
+		debugPrintf("Its layout mirrors the replacement asset paths expected in a mod directory.\n");
+		debugPrintf("Usage :\n");
+		debugPrintf("dumpAllImages\n");
+		return true;
+	}
+
+	int count = dumpArchiveXMGs("static/static.xarc");
+
+	// Walk all the level and location archives. This mirrors walkAllArchives,
+	// but is a separate loop since we need the archive names, which the
+	// visitors do not receive.
+	ArchiveLoader *archiveLoader = new ArchiveLoader();
+
+	// Temporarily replace the global archive loader with our instance
+	ArchiveLoader *gameArchiveLoader = StarkArchiveLoader;
+	StarkArchiveLoader = archiveLoader;
+
+	archiveLoader->load("x.xarc");
+	Resources::Root *root = archiveLoader->useRoot<Resources::Root>("x.xarc");
+
+	// Find all the levels
+	Common::Array<Resources::Level *> levels = root->listChildren<Resources::Level>();
+
+	// Loop over the levels
+	for (uint i = 0; i < levels.size(); i++) {
+		Resources::Level *level = levels[i];
+
+		Common::Path levelArchive = archiveLoader->buildArchiveName(level);
+		count += dumpArchiveXMGs(levelArchive);
+
+		// Load the detailed level archive to be able to list the locations
+		archiveLoader->load(levelArchive);
+		level = archiveLoader->useRoot<Resources::Level>(levelArchive);
+
+		Common::Array<Resources::Location *> locations = level->listChildren<Resources::Location>();
+
+		// Loop over the locations
+		for (uint j = 0; j < locations.size(); j++) {
+			Resources::Location *location = locations[j];
+
+			Common::Path locationArchive = archiveLoader->buildArchiveName(level, location);
+			count += dumpArchiveXMGs(locationArchive);
+		}
+
+		archiveLoader->returnRoot(levelArchive);
+		archiveLoader->unloadUnused();
+	}
+
+	// Restore the global archive loader
+	StarkArchiveLoader = gameArchiveLoader;
+
+	delete archiveLoader;
+
+	debugPrintf("Dumped %d images\n", count);
 
 	return true;
 }
