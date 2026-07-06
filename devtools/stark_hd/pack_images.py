@@ -39,8 +39,9 @@ def main():
 
     dump, up, mod = Path(args.dump), Path(args.up), Path(args.mod)
 
+    sources = sorted(up.rglob("*.png"))
     packed = errors = 0
-    for src in sorted(up.rglob("*.png")):
+    for src in sources:
         rel = src.relative_to(up)
         if any(part.endswith(".tm") for part in rel.parts):
             continue
@@ -67,8 +68,10 @@ def main():
 
         dst = mod / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
-        img.save(dst, optimize=True)
+        img.save(dst)
         packed += 1
+        if packed % 200 == 0:
+            print(f"  {packed}/{len(sources)}", flush=True)
 
     print(f"packed {packed} images into {mod}, {errors} errors")
     return 1 if errors else 0

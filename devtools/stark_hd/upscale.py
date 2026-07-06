@@ -138,7 +138,7 @@ def upscale_file(model, src: Path, dst: Path, device, dtype, tile: int, overlap:
             Image.LANCZOS)
 
     dst.parent.mkdir(parents=True, exist_ok=True)
-    out_img.save(dst, optimize=True)
+    out_img.save(dst)
     return mode
 
 
