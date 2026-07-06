@@ -542,7 +542,8 @@ int Console::dumpArchiveXMGs(const Common::Path &archiveName) {
 		fileName += ".png";
 
 		Common::Path filePath = dumpDir.appendComponent(fileName);
-		if (Common::File::exists(filePath)) {
+		// Common::File::exists only sees SearchMan members, use FSNode for plain paths
+		if (Common::FSNode(filePath).exists()) {
 			continue;
 		}
 
@@ -659,8 +660,14 @@ int Console::dumpArchiveTMs(const Common::Path &archiveName) {
 				textureName = Common::String(textureName.c_str(), textureName.rfind('.'));
 			}
 
+			// Texture names use the game's original single byte encoding (e.g. Emma's
+			// 'pupp\xe6r'), which the filesystem rejects as invalid UTF-8. Dump as UTF-8:
+			// readOverrideDdsArchive converts such names back when loading override zips.
+			textureName = textureName.decode(Common::kWindows1252).encode(Common::kUtf8);
+
 			Common::Path filePath = setDir.appendComponent(textureName + ".png");
-			if (Common::File::exists(filePath)) {
+			// Common::File::exists only sees SearchMan members, use FSNode for plain paths
+			if (Common::FSNode(filePath).exists()) {
 				continue;
 			}
 
