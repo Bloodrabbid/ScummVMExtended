@@ -186,7 +186,10 @@ def check_videos(game: Path, mod: Path, rep: Report):
                     raise ValueError(f"codec {st['codec_name']}")
                 if want_alpha and st["pix_fmt"] != "yuva420p":
                     raise ValueError(f"no alpha ({st['pix_fmt']})")
-                if st["r_frame_rate"] != so["r_frame_rate"]:
+                def as_fps(s):
+                    num, den = s.split("/")
+                    return int(num) / int(den)
+                if abs(as_fps(st["r_frame_rate"]) - as_fps(so["r_frame_rate"])) > 0.01:
                     raise ValueError(f"fps {st['r_frame_rate']} != {so['r_frame_rate']}")
                 if st["nb_read_frames"] != so["nb_read_frames"]:
                     raise ValueError(f"frames {st['nb_read_frames']} != {so['nb_read_frames']}")
