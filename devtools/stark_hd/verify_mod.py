@@ -36,6 +36,7 @@ class Report:
     def __init__(self):
         self.errors = []
         self.counts = {}
+        self.warnings = 0
 
     def err(self, msg):
         self.errors.append(msg)
@@ -81,10 +82,14 @@ def check_images(game: Path, dump: Path, mod: Path, rep: Report):
                 # dims). Imported hand-made assets aren't exactly 4x, so only flag
                 # downscales and broken aspect ratios.
                 rw, rh = img.width / ow, img.height / oh
-                if rw < 1 or rh < 1 or abs(rw - rh) > 0.2:
+                if rw < 1 or rh < 1 or abs(rw - rh) > 0.7:
                     bad += 1
                     rep.err(f"size {img.size} vs original {ow}x{oh}: {png_rel}")
                     continue
+                if abs(rw - rh) > 0.2:
+                    # imported hand-made renders are framed slightly differently;
+                    # the engine stretches them into the original rect
+                    rep.warnings += 1
                 arr = np.asarray(img.convert("RGBA"))
                 a = arr[..., 3:4]
                 if (arr[..., :3] > a).any():
@@ -246,6 +251,7 @@ def main():
     print("\n=== SUMMARY ===")
     for k, v in rep.counts.items():
         print(f"{k:14s} {v}")
+    print(f"{'warnings':14s} {rep.warnings}")
     print(f"{'errors':14s} {len(rep.errors)}")
     return 1 if rep.errors else 0
 
