@@ -769,7 +769,12 @@ bool Console::Cmd_RenderModel(int argc, const char **argv) {
 	entry->render(lights);
 
 	// Frame the camera on the model based on its bounding box
-	Math::AABB bbox = item->findBonesMesh()->getModel()->getBoundingBox();
+	Resources::BonesMesh *mesh = item->findBonesMesh();
+	if (!mesh || !mesh->getModel()) {
+		debugPrintf("Model '%s' has no mesh to render\n", item->getName().c_str());
+		return true;
+	}
+	Math::AABB bbox = mesh->getModel()->getBoundingBox();
 	float height = bbox.getMax().z() - bbox.getMin().z();
 	float radius = MAX(bbox.getMax().x() - bbox.getMin().x(),
 	                   bbox.getMax().y() - bbox.getMin().y()) * 0.5f;
