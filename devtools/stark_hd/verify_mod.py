@@ -77,9 +77,13 @@ def check_images(game: Path, dump: Path, mod: Path, rep: Report):
                     continue
                 with Image.open(orig) as o:
                     ow, oh = o.size
-                if img.size != (ow * MODEL_SCALE, oh * MODEL_SCALE):
+                # Engine accepts any override resolution (layout uses the original
+                # dims). Imported hand-made assets aren't exactly 4x, so only flag
+                # downscales and broken aspect ratios.
+                rw, rh = img.width / ow, img.height / oh
+                if rw < 1 or rh < 1 or abs(rw - rh) > 0.2:
                     bad += 1
-                    rep.err(f"size {img.size} != {MODEL_SCALE}x of {ow}x{oh}: {png_rel}")
+                    rep.err(f"size {img.size} vs original {ow}x{oh}: {png_rel}")
                     continue
                 arr = np.asarray(img.convert("RGBA"))
                 a = arr[..., 3:4]
