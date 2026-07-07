@@ -24,6 +24,12 @@
 #include "engines/stark/formats/tm.h"
 #include "engines/stark/formats/xarc.h"
 #include "engines/stark/formats/xmg.h"
+#include "engines/stark/gfx/driver.h"
+#include "engines/stark/gfx/renderentry.h"
+#include "engines/stark/model/model.h"
+#include "engines/stark/resources/bonesmesh.h"
+#include "engines/stark/resources/camera.h"
+#include "engines/stark/scene.h"
 #include "engines/stark/resources/object.h"
 #include "engines/stark/resources/anim.h"
 #include "engines/stark/resources/level.h"
@@ -80,6 +86,7 @@ Console::Console() :
 	registerCmd("extractAllTextures",   WRAP_METHOD(Console, Cmd_ExtractAllTextures));
 	registerCmd("dumpAllImages",        WRAP_METHOD(Console, Cmd_DumpAllImages));
 	registerCmd("dumpAllTextures",      WRAP_METHOD(Console, Cmd_DumpAllTextures));
+	registerCmd("renderModel",          WRAP_METHOD(Console, Cmd_RenderModel));
 }
 
 Console::~Console() {
@@ -690,6 +697,128 @@ int Console::dumpArchiveTMs(const Common::Path &archiveName) {
 	}
 
 	return dumped;
+}
+
+bool Console::Cmd_RenderModel(int argc, const char **argv) {
+	if (argc >= 2 && scumm_stricmp(argv[1], "list") != 0 && !Common::isDigit(argv[1][0])) {
+		debugPrintf("Render a 3d actor model to a PNG in the 'dump' folder, using the scene lights\n");
+		debugPrintf("and the full backbuffer resolution.\n");
+		debugPrintf("Usage :\n");
+		debugPrintf("renderModel list          -- list the models in the current location\n");
+		debugPrintf("renderModel [index] [angle-degrees]\n");
+		debugPrintf("Defaults to the character under player control, seen from 30 degrees\n");
+		return true;
+	}
+
+	Current *current = StarkGlobal->getCurrent();
+	if (!current) {
+		debugPrintf("This command is only available in game.\n");
+		return true;
+	}
+
+	Resources::Location *location = current->getLocation();
+	if (!location->has3DLayer()) {
+		debugPrintf("The current location has no 3d layer.\n");
+		return true;
+	}
+
+	Common::Array<Resources::ModelItem *> models = location->listChildrenRecursive<Resources::ModelItem>();
+
+	if (argc >= 2 && scumm_stricmp(argv[1], "list") == 0) {
+		for (uint i = 0; i < models.size(); i++) {
+			debugPrintf("%d: %s%s\n", i, models[i]->getName().c_str(),
+			            models[i]->isEnabled() ? "" : " (disabled)");
+		}
+		return true;
+	}
+
+	Resources::ModelItem *item = current->getInteractive();
+	if (argc >= 2) {
+		uint index = atoi(argv[1]);
+		if (index >= models.size()) {
+			debugPrintf("No model with index %d, see renderModel list\n", index);
+			return true;
+		}
+		item = models[index];
+	}
+	if (!item) {
+		debugPrintf("No model to render\n");
+		return true;
+	}
+
+	float angle = argc >= 3 ? atof(argv[2]) : 30.0f;
+
+	Gfx::RenderEntry *entry = item->getRenderEntry(Common::Point());
+	if (!entry) {
+		debugPrintf("Model '%s' has no render entry, is it enabled?\n", item->getName().c_str());
+		return true;
+	}
+
+	Gfx::LightEntryArray lights = location->listLightEntries();
+	if (lights.empty()) {
+		debugPrintf("The current location has no lights.\n");
+		return true;
+	}
+
+	const Common::Rect gameViewport(Gfx::Driver::kOriginalWidth, Gfx::Driver::kGameViewportHeight);
+	StarkGfx->setViewport(gameViewport);
+
+	// First render pass with the scene camera fills the vertex buffers
+	// and updates the model's bounding box
+	StarkGfx->clearScreen();
+	entry->render(lights);
+
+	// Frame the camera on the model based on its bounding box
+	Math::AABB bbox = item->findBonesMesh()->getModel()->getBoundingBox();
+	float height = bbox.getMax().z() - bbox.getMin().z();
+	float radius = MAX(bbox.getMax().x() - bbox.getMin().x(),
+	                   bbox.getMax().y() - bbox.getMin().y()) * 0.5f;
+
+	Math::Vector3d center = item->getPosition3D()
+	        + Math::Vector3d(0, 0, (bbox.getMin().z() + bbox.getMax().z()) * 0.5f);
+	float distance = 1.5f * height + 2.0f * radius;
+	float rad = angle * M_PI / 180.0f;
+	Math::Vector3d cameraPosition = center
+	        + Math::Vector3d(cos(rad) * distance, sin(rad) * distance, height * 0.1f);
+	Math::Vector3d lookDirection = center - cameraPosition;
+	lookDirection.normalize();
+
+	StarkScene->initCamera(cameraPosition, lookDirection, 45.0f, gameViewport,
+	                       MAX(1.0f, distance * 0.05f), 64000.0f);
+	StarkScene->scrollCamera(gameViewport);
+
+	StarkGfx->clearScreen();
+	entry->render(lights);
+
+	Graphics::Surface *surface = StarkGfx->getViewportScreenshot();
+
+	// Restore the location's camera before anything else renders
+	Common::Array<Resources::Camera *> cameras = location->listChildrenRecursive<Resources::Camera>();
+	if (!cameras.empty()) {
+		cameras[0]->onEnterLocation();
+	}
+
+	if (!surface) {
+		debugPrintf("Unable to grab the viewport\n");
+		return true;
+	}
+
+	Common::Path filePath(Common::String::format("dump/model_%s_%d.png",
+	                      item->getName().c_str(), (int)angle));
+	Common::DumpFile out;
+	if (!out.open(filePath, true)) {
+		debugPrintf("Unable to open file '%s' for writing\n", filePath.toString().c_str());
+	} else {
+		Image::writePNG(out, *surface);
+		out.close();
+		debugPrintf("Saved %s (%dx%d)\n", filePath.toString().c_str(), surface->w, surface->h);
+	}
+
+	surface->free();
+	delete surface;
+
+	// Close the console so the game repaints with the restored camera
+	return false;
 }
 
 bool Console::Cmd_DumpAllTextures(int argc, const char **argv) {

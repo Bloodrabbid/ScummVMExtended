@@ -67,6 +67,7 @@ private:
 	bool Cmd_ExtractAllTextures(int argc, const char **argv);
 	bool Cmd_DumpAllImages(int argc, const char **argv);
 	bool Cmd_DumpAllTextures(int argc, const char **argv);
+	bool Cmd_RenderModel(int argc, const char **argv);
 
 	Common::Array<Resources::Anim *> listAllLocationAnimations() const;
 	Common::Array<Resources::Script *> listAllLocationScripts() const;
