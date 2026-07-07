@@ -17,7 +17,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 
 def premultiply(img: Image.Image) -> Image.Image:
@@ -35,6 +35,11 @@ def main():
     parser.add_argument("--scale-div", type=int, default=1,
                         help="integer divisor applied to the 4x masters (2 = handheld profile)")
     parser.add_argument("--model-scale", type=int, default=4)
+    parser.add_argument("--smooth-alpha", type=float, default=0, metavar="RADIUS",
+                        help="round the staircase silhouettes of near-binary alpha masks: "
+                             "gaussian blur of RADIUS px (at 4x) + a soft threshold. Images "
+                             "with genuine alpha gradients (translucent panels) are detected "
+                             "and left untouched")
     args = parser.parse_args()
 
     dump, up, mod = Path(args.dump), Path(args.up), Path(args.mod)
@@ -63,6 +68,16 @@ def main():
         if args.scale_div > 1:
             img = img.resize((img.width // args.scale_div, img.height // args.scale_div),
                              Image.LANCZOS)
+
+        if args.smooth_alpha > 0:
+            img = img.convert("RGBA")
+            a = np.asarray(img.getchannel("A"))
+            partial = ((a > 16) & (a < 240)).mean()
+            if a.min() < 255 and partial < 0.05:  # near-binary mask, not a translucent panel
+                blurred = img.getchannel("A").filter(ImageFilter.GaussianBlur(args.smooth_alpha))
+                arr = np.asarray(blurred, dtype=np.float32)
+                arr = np.clip((arr - 96) / 64, 0, 1) * 255
+                img.putalpha(Image.fromarray(arr.astype(np.uint8), "L"))
 
         img = premultiply(img)
 
